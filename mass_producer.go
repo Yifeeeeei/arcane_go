@@ -112,6 +112,7 @@ func (m *MassProducer) cleanString(s string) string {
 		"!": "！",
 		"【": "[",
 		"】": "]",
+		"！": "!",
 	}
 	r := []rune(s)
 	for i, v := range r {
