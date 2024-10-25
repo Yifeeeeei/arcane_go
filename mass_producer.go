@@ -109,7 +109,6 @@ func (m *MassProducer) cleanString(s string) string {
 		"’": "'",
 		"（": "(",
 		"）": ")",
-		"!": "！",
 		"【": "[",
 		"】": "]",
 		"！": "!",
