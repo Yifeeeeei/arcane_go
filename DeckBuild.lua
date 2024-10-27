@@ -40,13 +40,13 @@ local deck_builder_button
 local input_str = ""
 
 local deck_builder_input_position = {
-    x = 0,
+    x = -2,
     y = 1,
     z = 3
 }
 
 local deck_builder_button_position = {
-    x = 0,
+    x = -2,
     y = 1,
     z = -2
 }
@@ -464,7 +464,7 @@ function buildDeckByDeckCode(deck_code)
             print("comment: ", card_code)
             if #card_codes > 0 then
                 setUpDeck(card_codes, {
-                    x = deck_builder_button_position.x - 8 + pile_created * 4,
+                    x = deck_builder_button_position.x - 10 + pile_created * 4,
                     y = deck_builder_button_position.y,
                     z = deck_builder_button_position.z + 8
                 })
@@ -479,7 +479,7 @@ function buildDeckByDeckCode(deck_code)
     end
     if #card_codes > 0 then
         setUpDeck(card_codes, {
-            x = deck_builder_button_position.x - 8 + pile_created * 4,
+            x = deck_builder_button_position.x - 10 + pile_created * 4,
             y = deck_builder_button_position.y,
             z = deck_builder_button_position.z + 8
         })
