@@ -1,4 +1,7 @@
 -- global variables
+-- tags
+local initiated = false
+
 -- cards
 local DEBUGGING = false
 
@@ -62,6 +65,12 @@ local game_rule_position = {
 
 function onLoad()
     print("onLoad")
+    if initiated then
+        print("already initiated")
+        return
+    end
+
+
     local jsonUrl = "https://yifeeeeei.github.io/ArcaneImages/output/simplified_card_infos.json" -- Replace this with your actual JSON URL
     -- here, I get the all card infos and then build the scene from scrach after retreiving the data
     print("setUpDeckBuilderInput")
@@ -71,6 +80,7 @@ function onLoad()
     setUpDeckBuilder()
     -- setUpGameRule()
     -- setUpTexts()
+    initiated = true
 end
 
 -- function createTileButtonAtPostion(position, tileFrontImageUrl, tileBackImageUrl, buttonHint, onClickFunctionName)
