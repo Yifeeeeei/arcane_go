@@ -252,7 +252,7 @@ func (cardMaker *CardMaker) getDigit(numberString string, leftToRightPos int) in
 }
 
 func (cardMaker *CardMaker) isLegend(cardInfo *CardInfo) bool {
-	return cardInfo.Type == TYPE_HERO_ZH || (cardMaker.getDigit(cardInfo.Number, 2) == 1 && (cardInfo.Type == TYPE_UNIT_ZH || cardInfo.Type == TYPE_ITEM_ZH))
+	return cardInfo.Type == TYPE_HERO_ZH || (cardMaker.getDigit(cardInfo.Number, 2) == 1)
 }
 
 func (cardMaker *CardMaker) drawRoundedRect(img *image.RGBA, left, top, right, bottom, radius, borderWidth int, fillColor, borderColor color.RGBA) *image.RGBA {

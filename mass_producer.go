@@ -26,11 +26,14 @@ const (
 )
 
 type MassProducer struct {
-	Params           *MassProducerParams
-	OldAllCardsInfos map[string]card_maker.CardInfo
-	AllCardInfos     []card_maker.CardInfo
-	Config           *card_maker.Config
-	Mu               *sync.Mutex
+	Params            *MassProducerParams
+	OldAllCardsInfos  map[string]card_maker.CardInfo
+	AllCardInfos      []card_maker.CardInfo
+	Config            *card_maker.Config
+	Mu                *sync.Mutex
+	Log               []string
+	LogMu             *sync.Mutex
+	SanityCheckPassed bool
 }
 
 func NewMassProducer(paramPath string) (*MassProducer, error) {
@@ -76,6 +79,9 @@ func NewMassProducer(paramPath string) (*MassProducer, error) {
 
 	massProducer.AllCardInfos = []card_maker.CardInfo{}
 	massProducer.Mu = &sync.Mutex{}
+	massProducer.LogMu = &sync.Mutex{}
+
+	massProducer.SanityCheckPassed = true
 
 	return massProducer, nil
 }
@@ -358,6 +364,12 @@ func (m *MassProducer) SaveRgbaAsJpeg(img *image.RGBA, filename string) error {
 	return nil
 }
 
+func (m *MassProducer) addLog(log string) {
+	m.LogMu.Lock()
+	m.Log = append(m.Log, log)
+	m.LogMu.Unlock()
+}
+
 func (m *MassProducer) dealWithSheet(xlsxFile *excelize.File, sheetName, versionName, drawingPath string) {
 	newConfig := m.Config.Copy()
 	newConfig.DrawingPath = drawingPath
@@ -376,7 +388,7 @@ func (m *MassProducer) dealWithSheet(xlsxFile *excelize.File, sheetName, version
 			if err.Error() == fmt.Sprintf("%v", ERR_SKIP) {
 				continue
 			} else {
-				log.Printf("get card info from row failed %v, row: %v\n", err, row)
+				m.addLog(fmt.Sprintf("get card info from row failed %v, row: %v\n", err, row))
 				continue
 			}
 		}
@@ -397,7 +409,7 @@ func (m *MassProducer) dealWithSheet(xlsxFile *excelize.File, sheetName, version
 		// start drawing
 		img, err := cardMaker.MakeCard(cardInfo)
 		if err != nil {
-			log.Printf("make card failed %v", err)
+			m.addLog(fmt.Sprintf("make card failed %v, card info: %v\n", err, cardInfo))
 			continue
 		}
 		// get the dirs to the output path
@@ -463,11 +475,90 @@ func (m *MassProducer) dealWithXlsx(xlsxPath, drawingPath, versionName string, p
 
 }
 
+func (m *MassProducer) SanityCheck() {
+	// this function checks whether all the images can be found
+	fmt.Println("Sanity check ...")
+	numberOfSheets := len(m.Params.XlsxPaths)
+	wg := sync.WaitGroup{}
+
+	for i := 0; i < numberOfSheets; i++ {
+		xlsxPath := m.Params.XlsxPaths[i]
+		drawingPath := m.Params.DrawingPaths[i]
+		wg.Add(1)
+
+		go func() {
+			// m.dealWithXlsx(xlsxPath, drawingPath, versionName, p)
+			xlsxFile, err := excelize.OpenFile(xlsxPath)
+			if err != nil {
+				log.Fatalf("open file %s failed", xlsxPath)
+				return
+			}
+
+			sheetList := xlsxFile.GetSheetList()
+
+			wg2 := sync.WaitGroup{}
+			for _, sheetName := range sheetList {
+				wg2.Add(1)
+				go func() {
+					// m.dealWithSheet(xlsxFile, sheetName, versionName, drawingPath)
+					rawRows, err := xlsxFile.GetRows(sheetName)
+					if err != nil {
+						log.Fatalf("get rows failed when reading sheet %v", sheetName)
+						return
+					}
+					rows := m.parseSheet(rawRows)
+					for _, row := range rows {
+						num, ok := row["编号"]
+						if !ok {
+							continue
+						}
+						possibleExtentions := []string{".webp", ".jpg", ".png", ".jpeg", ".tiff"}
+						found := false
+						for _, ext := range possibleExtentions {
+							// try to find the image in drawing path
+							imgPath := filepath.Join(drawingPath, num+ext)
+							_, err := os.Stat(imgPath)
+							if err == nil {
+								found = true
+								break
+							}
+						}
+						if !found {
+							m.SanityCheckPassed = false
+							m.addLog(fmt.Sprintf("image not found for %s\n", num))
+						}
+
+					}
+					defer wg2.Done()
+				}()
+			}
+			wg2.Wait()
+
+			defer wg.Done()
+		}()
+	}
+	wg.Wait()
+
+	if m.SanityCheckPassed {
+		fmt.Println("Sanity check passed")
+	} else {
+		fmt.Println("Sanity check failed:")
+		for _, log := range m.Log {
+			fmt.Println(log)
+		}
+	}
+}
+
 func (m *MassProducer) Produce() {
 	// xlsxFile, err := excelize.OpenFile()
+	m.SanityCheck()
+	if !m.SanityCheckPassed {
+		return
+	}
 	numberOfSheets := len(m.Params.XlsxPaths)
 	wg := sync.WaitGroup{}
 	p := mpb.New(mpb.WithWidth(64))
+
 	for i := 0; i < numberOfSheets; i++ {
 		xlsxPath := m.Params.XlsxPaths[i]
 		drawingPath := m.Params.DrawingPaths[i]
@@ -503,5 +594,8 @@ func (m *MassProducer) Produce() {
 	if err != nil {
 		log.Fatalf("write simplified card infos failed %v", err)
 	}
-
+	// print log
+	for _, log := range m.Log {
+		fmt.Println(log)
+	}
 }
