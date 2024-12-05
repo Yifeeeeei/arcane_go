@@ -34,6 +34,7 @@ type MassProducer struct {
 	Log               []string
 	LogMu             *sync.Mutex
 	SanityCheckPassed bool
+	SanityMu          *sync.Mutex
 }
 
 func NewMassProducer(paramPath string) (*MassProducer, error) {
@@ -82,6 +83,7 @@ func NewMassProducer(paramPath string) (*MassProducer, error) {
 	massProducer.LogMu = &sync.Mutex{}
 
 	massProducer.SanityCheckPassed = true
+	massProducer.SanityMu = &sync.Mutex{}
 
 	return massProducer, nil
 }
@@ -528,7 +530,9 @@ func (m *MassProducer) SanityCheck() {
 							}
 						}
 						if !found {
+							m.SanityMu.Lock()
 							m.SanityCheckPassed = false
+							m.SanityMu.Unlock()
 							m.addLog(fmt.Sprintf("image not found for %s\n", num))
 						}
 
