@@ -512,7 +512,11 @@ func (m *MassProducer) SanityCheck() {
 						if !ok {
 							continue
 						}
-						possibleExtentions := []string{".webp", ".jpg", ".png", ".jpeg", ".tiff"}
+						if num == "" {
+							continue
+						}
+
+						possibleExtentions := []string{".webp", ".jpg", ".png", ".jpeg", ".jfif", ".tiff"}
 						found := false
 						for _, ext := range possibleExtentions {
 							// try to find the image in drawing path
