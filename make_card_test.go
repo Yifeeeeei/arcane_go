@@ -23,7 +23,7 @@ func TestGen(t *testing.T) {
 		Description: "\\?\\?\\?\\?1221\\无\\?\\?32321\\暗2\\血\\威\\持\\攻\\火3\\水4\\气5\\地6\\光7\\暗\\?\\?\\?43\\?\\?\\?\\?\\?\\?\\?\\?\\?\\?\\?一张手牌检\\?\\?\\?索一张传奇以外暗的水火道具牌啊阿啊阿啊阿啊阿啊阿啊阿啊阿啊阿啊阿啊阿啊阿啊abcdeft12143241AAAAAAA\\气",
 		Quote:       "我是人鱼大王,超级大王，大法师打发时光啊大帅哥发的放大身份高贵撒地方爱上啊",
 		ElementsCost: card_maker.NewElements(map[string]int{
-			"水": 1,
+			"水": 11,
 			"火": 2,
 		}),
 		ElementsExpense: card_maker.NewElements(map[string]int{

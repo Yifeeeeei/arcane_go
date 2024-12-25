@@ -524,7 +524,7 @@ func (cardMaker *CardMaker) drawCost(baseImage *image.RGBA, cardInfo *CardInfo) 
 	}
 	numberLength := 0
 	for _, elemAndCost := range allCosts {
-		numberLength += cardMaker.getStringWidth(elemAndCost.Elem, font, float64(cardMaker.Config.CostFontSize))
+		numberLength += cardMaker.getStringWidth(strconv.Itoa(elemAndCost.Val), font, float64(cardMaker.Config.CostFontSize))
 	}
 	categoryLength := len(allCosts) * cardMaker.Config.CostCategoryWidth
 	totalLength := numberLength + categoryLength + len(allCosts)*cardMaker.Config.CostPadding*2 + cardMaker.Config.CostPadding
@@ -786,7 +786,7 @@ func (cardMaker *CardMaker) drawGain(baseImage *image.RGBA, cardInfo *CardInfo) 
 	}
 	numberLength := 0
 	for _, elemAndCost := range allGains {
-		numberLength += cardMaker.getStringWidth(elemAndCost.Elem, font, float64(cardMaker.Config.GainFontSize))
+		numberLength += cardMaker.getStringWidth(strconv.Itoa(elemAndCost.Val), font, float64(cardMaker.Config.GainFontSize))
 	}
 	categoryLength := len(allGains) * cardMaker.Config.GainCategoryWidth
 	totalLength := numberLength + categoryLength + len(allGains)*cardMaker.Config.GainPadding*2 + cardMaker.Config.GainPadding
@@ -1048,7 +1048,7 @@ func (cardMaker *CardMaker) drawExpense(baseImage *image.RGBA, cardInfo *CardInf
 	}
 	numberLength := 0
 	for _, elemAndCost := range allExpenses {
-		numberLength += cardMaker.getStringWidth(elemAndCost.Elem, font, float64(cardMaker.Config.ExpenseFontSize))
+		numberLength += cardMaker.getStringWidth(strconv.Itoa(elemAndCost.Val), font, float64(cardMaker.Config.ExpenseFontSize))
 	}
 	categoryLength := len(allExpenses) * cardMaker.Config.ExpenseCategoryWidth
 	totalLength := numberLength + categoryLength + len(allExpenses)*cardMaker.Config.ExpensePadding*2 + cardMaker.Config.ExpensePadding
