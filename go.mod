@@ -1,4 +1,4 @@
-module github.com/Yifeeeeei/sorcery_go
+module github.com/Yifeeeeei/arcane_go
 
 go 1.22.1
 
