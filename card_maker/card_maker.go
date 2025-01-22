@@ -6,6 +6,7 @@ import (
 	"image/color"
 	"image/jpeg"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"slices"
@@ -180,6 +181,23 @@ func (cardMaker *CardMaker) loadImage(filePath string) (*image.RGBA, error) {
 }
 
 func (cardMaker *CardMaker) getImageWithoutExtension(imagePref string) (*image.RGBA, error) {
+	// if it is an internet url (starts with http or https), download it
+	if slices.Contains([]string{"http"}, imagePref[:4]) || slices.Contains([]string{"https"}, imagePref[:5]) {
+		// request it to download
+		response, err := http.Get(imagePref)
+		if err != nil {
+			return nil, fmt.Errorf("error downloading image %v: %v", imagePref, err)
+		}
+		defer response.Body.Close()
+		img, _, err := image.Decode(response.Body)
+		if err != nil {
+			return nil, fmt.Errorf("error decoding image %v: %v", imagePref, err)
+		}
+		rgba := image.NewRGBA(img.Bounds())
+		draw.Draw(rgba, rgba.Bounds(), img, image.Point{0, 0}, draw.Src)
+		return rgba, nil
+	}
+
 	extensionList := []string{".png", ".jpg", ".jpeg", ".webp", ".jfif"}
 	for _, extension := range extensionList {
 		filePath := imagePref + extension
