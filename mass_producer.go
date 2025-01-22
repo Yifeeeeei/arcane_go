@@ -14,7 +14,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Yifeeeeei/sorcery_go/card_maker"
+	"github.com/Yifeeeeei/arcane_go/card_maker"
 	"github.com/vbauerster/mpb/v8"
 	"github.com/vbauerster/mpb/v8/decor"
 	"github.com/xuri/excelize/v2"

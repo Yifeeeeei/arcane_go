@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/Yifeeeeei/sorcery_go/card_maker"
+	"github.com/Yifeeeeei/arcane_go/card_maker"
 )
 
 func TestGen(t *testing.T) {
