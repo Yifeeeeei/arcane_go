@@ -216,6 +216,9 @@ func (cardMaker *CardMaker) getImageWithoutExtension(imagePref string) (*image.R
 }
 
 func (cardMaker *CardMaker) getDrawing(cardInfo *CardInfo) (*image.RGBA, error) {
+	if cardMaker.Config.StaticDrawing {
+		return cardMaker.getImageWithoutExtension(cardMaker.Config.StaticDrawingPath)
+	}
 	img, err := cardMaker.getImageWithoutExtension(filepath.Join(cardMaker.Config.DrawingPath, cardInfo.Number))
 	if err != nil {
 		return nil, fmt.Errorf("error getting drawing: %v", err)
