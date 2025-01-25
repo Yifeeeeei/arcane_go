@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/color"
 	"image/jpeg"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -198,7 +199,7 @@ func (cardMaker *CardMaker) getImageWithoutExtension(imagePref string) (*image.R
 		return rgba, nil
 	}
 
-	extensionList := []string{".png", ".jpg", ".jpeg", ".webp", ".jfif"}
+	extensionList := []string{".png", ".jpg", ".jpeg", ".webp", ".jfif", ""} // "" is for the link is already full
 	for _, extension := range extensionList {
 		filePath := imagePref + extension
 
@@ -467,9 +468,26 @@ func (cardMaker *CardMaker) getRectOutlineColor(cardInfo *CardInfo) color.RGBA {
 }
 
 func (cardMaker *CardMaker) loadFont(fontPath string) (*truetype.Font, error) {
-	fontBytes, err := os.ReadFile(fontPath)
-	if err != nil {
-		return nil, err
+	// if path is a url, download it
+	var fontBytes []byte
+	if slices.Contains([]string{"http"}, fontPath[:4]) || slices.Contains([]string{"https"}, fontPath[:5]) {
+		// request it to download
+		response, err := http.Get(fontPath)
+		if err != nil {
+			return nil, fmt.Errorf("error downloading font %v: %v", fontPath, err)
+		}
+		defer response.Body.Close()
+		fontBytes, err = io.ReadAll(response.Body)
+		if err != nil {
+			return nil, fmt.Errorf("error reading font %v: %v", fontPath, err)
+		}
+	} else {
+		var err error
+		fontBytes, err = os.ReadFile(fontPath)
+		if err != nil {
+			return nil, err
+		}
+
 	}
 
 	font, err := freetype.ParseFont(fontBytes)
