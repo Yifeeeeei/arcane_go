@@ -183,7 +183,7 @@ func (cardMaker *CardMaker) loadImage(filePath string) (*image.RGBA, error) {
 
 func (cardMaker *CardMaker) getImageWithoutExtension(imagePref string) (*image.RGBA, error) {
 	// if it is an internet url (starts with http or https), download it
-	if slices.Contains([]string{"http"}, imagePref[:4]) || slices.Contains([]string{"https"}, imagePref[:5]) {
+	if len(imagePref) >= 5 && (slices.Contains([]string{"http"}, imagePref[:4]) || slices.Contains([]string{"https"}, imagePref[:5])) {
 		// request it to download
 		response, err := http.Get(imagePref)
 		if err != nil {
