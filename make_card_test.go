@@ -15,7 +15,7 @@ func TestGen(t *testing.T) {
 	drawingPath := "."
 
 	cardInfo := &card_maker.CardInfo{
-		Number:      "1411101",
+		Number:      "1211001",
 		Type:        "技能",
 		Name:        "人鱼公主菲尔",
 		Tag:         "传奇异兽",
