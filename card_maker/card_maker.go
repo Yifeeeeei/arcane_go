@@ -48,6 +48,8 @@ func (cardMaker *CardMaker) translator(zh string) string {
 		return ELEM_WATER_EN
 	} else if zh == ELEM_NONE_ZH {
 		return ELEM_NONE_EN
+	} else if zh == ELEM_MANA_ZH {
+		return ELEM_MANA_EN
 	}
 	log.Fatalf("Unknown element: %v, returning none\n", zh)
 	return ELEM_NONE_EN
@@ -1181,6 +1183,10 @@ func (cardMaker *CardMaker) makeUnitCard(cardInfo *CardInfo) (*image.RGBA, error
 		return nil, err
 	}
 	baseImage, err = cardMaker.drawCost(baseImage, cardInfo)
+	if err != nil {
+		return nil, err
+	}
+	baseImage, err = cardMaker.drawExpense(baseImage, cardInfo)
 	if err != nil {
 		return nil, err
 	}

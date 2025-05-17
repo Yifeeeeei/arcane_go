@@ -305,6 +305,7 @@ func NewDefaultConfig(sizeRatio int, generalPath, drawingPath, fontPath string) 
 			"气": "ele_air",
 			"地": "ele_earth",
 			"无": "ele_none",
+			"法": "ele_mana",
 		},
 		ElementBack: map[string]string{
 			"光": "back_light",
@@ -323,6 +324,7 @@ func NewDefaultConfig(sizeRatio int, generalPath, drawingPath, fontPath string) 
 			"\\气": filepath.Join(generalPath, "ele_air"),
 			"\\地": filepath.Join(generalPath, "ele_earth"),
 			"\\无": filepath.Join(generalPath, "ele_none"),
+			"\\法": filepath.Join(generalPath, "ele_mana"),
 			"\\血": filepath.Join(generalPath, "life"),
 			"\\攻": filepath.Join(generalPath, "attack"),
 			"\\威": filepath.Join(generalPath, "power"),

@@ -2,7 +2,7 @@ package card_maker
 
 import "fmt"
 
-var AllElements = []string{ELEM_AIR_ZH, ELEM_DARK_ZH, ELEM_EARTH_ZH, ELEM_FIRE_ZH, ELEM_LIGHT_ZH, ELEM_WATER_ZH, ELEM_NONE_ZH}
+var AllElements = []string{ELEM_AIR_ZH, ELEM_DARK_ZH, ELEM_EARTH_ZH, ELEM_FIRE_ZH, ELEM_LIGHT_ZH, ELEM_WATER_ZH, ELEM_NONE_ZH, ELEM_MANA_ZH}
 
 type Elements map[string]int
 

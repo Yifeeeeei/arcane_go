@@ -8,6 +8,7 @@ const (
 	ELEM_LIGHT_ZH = "光"
 	ELEM_DARK_ZH  = "暗"
 	ELEM_NONE_ZH  = "无"
+	ELEM_MANA_ZH  = "法"
 
 	ELEM_WATER_EN = "water"
 	ELEM_FIRE_EN  = "fire"
@@ -16,6 +17,7 @@ const (
 	ELEM_LIGHT_EN = "light"
 	ELEM_DARK_EN  = "dark"
 	ELEM_NONE_EN  = "none"
+	ELEM_MANA_EN  = "mana"
 
 	TYPE_HERO_ZH    = "人物"
 	TYPE_UNIT_ZH    = "伙伴"
