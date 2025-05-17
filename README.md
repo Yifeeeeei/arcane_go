@@ -59,7 +59,7 @@ sh test.sh
 Generate settings:
 
 ```bash
-go run github.com/Yifeeeeei/sorcery_go gen
+go run github.com/Yifeeeeei/arcane_go gen
 ```
 
 config mass_producer_params_xlsx.json
@@ -67,7 +67,7 @@ config mass_producer_params_xlsx.json
 then
 
 ```bash
-go run github.com/Yifeeeeei/sorcery_go
+go run github.com/Yifeeeeei/arcane_go
 ```
 
 All output will be in output dir
