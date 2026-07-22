@@ -782,7 +782,10 @@ func (cardMaker *CardMaker) drawDescriptionAndQuote(baseImage *image.RGBA, cardI
 		imageSquareWidth := min(w, h) - 2
 		leftCompensation := (max(w, h)-imageSquareWidth)/2 - 2
 		x := cardMaker.Config.DescriptionTextLeft + col + leftCompensation
-		y := cardMaker.Config.DescriptionTextToBlockTop + cardMaker.Config.DrawingToUpper + cardMaker.Config.DrawingHeight + row*(descriptionTextHeight+descriptionLineSpacing) + 3
+		// Freetype positions text from the em square, while placeholder images are
+		// positioned by their visible bounds. Move icons down slightly so their
+		// visual center aligns with the glyphs on the same line.
+		y := cardMaker.Config.DescriptionTextToBlockTop + cardMaker.Config.DrawingToUpper + cardMaker.Config.DrawingHeight + row*(descriptionTextHeight+descriptionLineSpacing) + 3 + descriptionFontSize/12
 		// same as font size
 		placeholderImage = cardMaker.adjustImage(placeholderImage, imageSquareWidth, imageSquareWidth)
 		baseImage = cardMaker.overlayImageOntoBase(baseImage, placeholderImage, x, y)

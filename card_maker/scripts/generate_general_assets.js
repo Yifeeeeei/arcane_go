@@ -25,21 +25,21 @@ function svg(w, h, body, extraDefs = '') {
 const borders = {
   border_unit: svg(1180, 1720, `
     <g fill="none" stroke="url(#gold)" stroke-linejoin="round" stroke-linecap="round" filter="url(#soft)">
-      <rect x="44" y="44" width="1092" height="1632" rx="10" stroke-width="16"/>
-      <rect x="66" y="66" width="1048" height="1588" rx="6" stroke-width="3" opacity=".82"/>
+      <rect x="44" y="44" width="1092" height="1632" rx="10" stroke-width="22"/>
+      <rect x="66" y="66" width="1048" height="1588" rx="6" stroke-width="6" opacity=".82"/>
       <path d="M70 128V70h58M1052 70h58v58M70 1592v58h58M1052 1650h58v-58" stroke-width="5" opacity=".8"/>
       <path d="M82 82l28 28M1098 82l-28 28M82 1638l28-28M1098 1638l-28-28" stroke-width="3" opacity=".65"/>
     </g>`),
   border_ability: svg(1180, 1720, `
     <g fill="none" stroke="url(#gold)" stroke-linecap="round" filter="url(#soft)">
-      <rect x="46" y="46" width="1088" height="1628" rx="22" stroke-width="13"/>
-      <rect x="66" y="66" width="1048" height="1588" rx="13" stroke-width="3" opacity=".8"/>
+      <rect x="46" y="46" width="1088" height="1628" rx="0" stroke-width="20"/>
+      <rect x="66" y="66" width="1048" height="1588" rx="13" stroke-width="6" opacity=".8"/>
       <path d="M70 112c23-2 40-19 42-42M1068 70c2 23 19 40 42 42M70 1608c23 2 40 19 42 42M1068 1650c2-23 19-40 42-42" stroke-width="4" opacity=".72"/>
     </g>`),
   border_item: svg(1180, 1720, `
     <g fill="none" stroke="url(#gold)" stroke-linejoin="bevel" filter="url(#soft)">
-      <path d="M70 44h1040l26 26v1580l-26 26H70l-26-26V70z" stroke-width="15"/>
-      <path d="M82 66h1016l16 16v1556l-16 16H82l-16-16V82z" stroke-width="3" opacity=".82"/>
+      <rect x="44" y="44" width="1092" height="1632" stroke-width="22"/>
+      <path d="M82 66h1016l16 16v1556l-16 16H82l-16-16V82z" stroke-width="6" opacity=".82"/>
       <path d="M70 122V70h52M1058 70h52v52M70 1598v52h52M1058 1650h52v-52" stroke-width="5" opacity=".72"/>
       <path d="M82 96h14V82M1084 82v14h14M82 1624h14v14M1084 1638v-14h14" stroke-width="3" opacity=".55"/>
     </g>`),
