@@ -1,27 +1,13 @@
 {
-    "xlsx_paths": [
-        "正式版/3.0技能.xlsx",
-        "正式版/3.0生物.xlsx",
-        "正式版/3.0英雄.xlsx",
-        "正式版/3.0道具.xlsx"
-    ],
-    "drawing_paths": [
-        "正式版-技能",
-        "正式版-生物",
-        "正式版-英雄",
-        "正式版-道具"
-    ],
-    "version_names": ["正式版", "正式版", "正式版", "正式版"],
-
-    "size_ratio": 2,
-    "is_printing_version": false,
-
-    "overwrite": true,
-    "@overwrite": "是否覆盖已有文件",
-
-    "new_cards_only": false,
-    "@new_cards_only": "是否只生成新卡牌，如果为false，则生成所有卡牌；如果为true，只会生成上次all_card_infos.json中变动过的或者输出目录下没有的卡牌",
-
-    "general_path": "card_maker/resources/general",
-    "font_path": "card_maker/resources/fonts"
+  "xlsx_paths": ["new_fork/奥术纪元_基础包卡牌设计_v0.2.xlsm"],
+  "drawing_paths": ["drawings"],
+  "version_names": ["基础包"],
+  "artwork_migration_path": "new_fork/arcane_artwork_migration.json",
+  "output_path": "new_output",
+  "size_ratio": 2,
+  "is_printing_version": false,
+  "overwrite": false,
+  "new_cards_only": false,
+  "general_path": "card_maker/resources/general",
+  "font_path": "card_maker/resources/fonts"
 }

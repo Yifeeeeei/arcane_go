@@ -6,604 +6,438 @@ import (
 	"image"
 	"image/color"
 	"image/jpeg"
-	"log"
 	"os"
 	"path/filepath"
-	"slices"
+	"regexp"
+	"sort"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/Yifeeeeei/arcane_go/card_maker"
-	"github.com/vbauerster/mpb/v8"
-	"github.com/vbauerster/mpb/v8/decor"
 	"github.com/xuri/excelize/v2"
 	"golang.org/x/image/tiff"
 )
 
-const (
-	OUTPUT_PATH = "output"
-)
+// IDs encode set, element, type, and a three-digit sequence:
+// B + A/F/W/... + H/C/S/I + 001.
+var newCardID = regexp.MustCompile(`^B[AFWEDLR][HCSI][0-9]{3}$`)
+
+type Row map[string]string
+type artworkCard struct {
+	NewID     string  `json:"new_id"`
+	LegacyID  *string `json:"legacy_id"`
+	LegacySet *string `json:"legacy_set"`
+}
+type artworkMigration struct {
+	Cards []artworkCard `json:"cards"`
+}
 
 type MassProducer struct {
-	Params            *MassProducerParams
-	OldAllCardsInfos  map[string]card_maker.CardInfo
-	AllCardInfos      []card_maker.CardInfo
-	Config            *card_maker.Config
-	Mu                *sync.Mutex
-	Log               []string
-	LogMu             *sync.Mutex
-	SanityCheckPassed bool
-	SanityMu          *sync.Mutex
+	Params       *MassProducerParams
+	AllCardInfos []card_maker.CardInfo
+	Config       *card_maker.Config
+	artwork      map[string]artworkCard
+	artworkFiles map[string]string
 }
 
 func NewMassProducer(paramPath string) (*MassProducer, error) {
-	jsonBytes, err := os.ReadFile(paramPath)
+	b, err := os.ReadFile(paramPath)
 	if err != nil {
 		return nil, err
 	}
-	params := &MassProducerParams{}
-	err = json.Unmarshal(jsonBytes, params)
-	if err != nil {
+	p := &MassProducerParams{}
+	if err = json.Unmarshal(b, p); err != nil {
 		return nil, err
 	}
-
-	massProducer := &MassProducer{Params: params}
-	cfg := card_maker.NewDefaultConfig(params.SizeRatio, params.GeneralPath, "dummydrawingpath", params.FontPath)
-	massProducer.Config = &cfg
-	massProducer.Config.GeneralPath = params.GeneralPath
-	massProducer.Config.FontPath = params.FontPath
-
-	massProducer.OldAllCardsInfos = nil
-
-	listOldCardInfos := []card_maker.CardInfo{}
-	_, err = os.Stat(filepath.Join(OUTPUT_PATH, "all_card_infos.json"))
-	if err == nil {
-		jsonBytes, err = os.ReadFile(filepath.Join(OUTPUT_PATH, "all_card_infos.json"))
-		if err == nil {
-			err = json.Unmarshal(jsonBytes, &listOldCardInfos)
-			if err == nil {
-				massProducer.OldAllCardsInfos = map[string]card_maker.CardInfo{}
-				for _, cardInfo := range listOldCardInfos {
-					massProducer.OldAllCardsInfos[cardInfo.Number] = cardInfo
-				}
-			} else {
-				log.Printf("unmarshal old card infos failed %v", err)
-			}
-
+	if len(p.XlsxPaths) == 0 {
+		return nil, fmt.Errorf("xlsx_paths cannot be empty")
+	}
+	if p.OutputPath == "" {
+		p.OutputPath = "output"
+	}
+	if p.SizeRatio == 0 {
+		p.SizeRatio = 2
+	}
+	cfg := card_maker.NewDefaultConfig(p.SizeRatio, p.GeneralPath, "", p.FontPath)
+	m := &MassProducer{Params: p, Config: &cfg, artwork: map[string]artworkCard{}, artworkFiles: map[string]string{}}
+	if p.ArtworkMigrationPath != "" {
+		b, err = os.ReadFile(p.ArtworkMigrationPath)
+		if err != nil {
+			return nil, err
+		}
+		var migration artworkMigration
+		if err = json.Unmarshal(b, &migration); err != nil {
+			return nil, err
+		}
+		for _, a := range migration.Cards {
+			m.artwork[a.NewID] = a
 		}
 	}
-
-	if (len(massProducer.Params.XlsxPaths) != len(massProducer.Params.DrawingPaths)) || (len(massProducer.Params.XlsxPaths) != len(massProducer.Params.VersionNames)) || (len(massProducer.Params.XlsxPaths) != len(massProducer.Params.DrawingPaths)) {
-		return nil, fmt.Errorf("length of xlsx_paths, drawing_paths, version_names should be the same")
-	}
-
-	massProducer.AllCardInfos = []card_maker.CardInfo{}
-	massProducer.Mu = &sync.Mutex{}
-	massProducer.LogMu = &sync.Mutex{}
-
-	massProducer.SanityCheckPassed = true
-	massProducer.SanityMu = &sync.Mutex{}
-
-	return massProducer, nil
+	return m, nil
 }
 
-func (m *MassProducer) makeDir(path string) error {
-	// if exist, do nothing, otherwise create it
-	_, err := os.Stat(path)
-	if err != nil {
-		err = os.MkdirAll(path, os.ModePerm)
+func parseOptionalInt(raw, field string) (*int, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil, nil
+	}
+	f, err := strconv.ParseFloat(raw, 64)
+	if err != nil || f < 0 || f != float64(int(f)) {
+		return nil, fmt.Errorf("%s must be a non-negative integer, got %q", field, raw)
+	}
+	v := int(f)
+	return &v, nil
+}
+
+var elementAliases = map[string]string{"火": "火", "火焰": "火", "水": "水", "水纹": "水", "气": "气", "大气": "气", "地": "地", "地脉": "地", "光": "光", "光辉": "光", "暗": "暗", "暗影": "暗", "奥术": "奥术", "无": "奥术"}
+
+func parseElements(raw string) (card_maker.Elements, error) {
+	result := card_maker.Elements{}
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return result, nil
+	}
+	normalized := strings.NewReplacer("；", " ", ";", " ", "，", " ", ",", " ", "/", " ", "\\", " ", "+", " ").Replace(raw)
+	re := regexp.MustCompile(`([\p{Han}]+)\s*([0-9]+(?:\.0+)?)`)
+	matches := re.FindAllStringSubmatch(normalized, -1)
+	if len(matches) == 0 {
+		return nil, fmt.Errorf("invalid element vector %q", raw)
+	}
+	consumed := re.ReplaceAllString(normalized, "")
+	if strings.TrimSpace(consumed) != "" {
+		return nil, fmt.Errorf("invalid element vector %q", raw)
+	}
+	for _, match := range matches {
+		name, ok := elementAliases[match[1]]
+		if !ok {
+			return nil, fmt.Errorf("unknown element %q", match[1])
+		}
+		v, err := parseOptionalInt(match[2], "element value")
+		if err != nil {
+			return nil, err
+		}
+		result[name] += *v
+	}
+	return result, nil
+}
+
+func parseSheet(rows [][]string) ([]Row, error) {
+	headerAt := -1
+	for i, row := range rows {
+		var hasID, hasName bool
+		for _, c := range row {
+			c = strings.TrimSpace(c)
+			hasID = hasID || c == "卡号"
+			hasName = hasName || c == "卡名"
+		}
+		if hasID && hasName {
+			headerAt = i
+			break
+		}
+	}
+	if headerAt < 0 {
+		return nil, fmt.Errorf("header row containing 卡号 and 卡名 not found")
+	}
+	header := rows[headerAt]
+	out := []Row{}
+	for _, cells := range rows[headerAt+1:] {
+		r := Row{}
+		nonempty := false
+		for i, h := range header {
+			if i >= len(cells) {
+				continue
+			}
+			h = strings.TrimSpace(h)
+			if h == "" {
+				continue
+			}
+			r[h] = cells[i]
+			nonempty = nonempty || strings.TrimSpace(cells[i]) != ""
+		}
+		if nonempty {
+			out = append(out, r)
+		}
+	}
+	return out, nil
+}
+
+func setCodeFromID(id string) string {
+	if len(id) < 1 {
+		return ""
+	}
+	return id[:1]
+}
+
+func (m *MassProducer) cardFromRow(row Row, sheet, setName string) (card_maker.CardInfo, error) {
+	id := strings.TrimSpace(row["卡号"])
+	if !newCardID.MatchString(id) {
+		return card_maker.CardInfo{}, fmt.Errorf("invalid card id %q", id)
+	}
+	name := strings.TrimSpace(row["卡名"])
+	if name == "" {
+		return card_maker.CardInfo{}, fmt.Errorf("%s: 卡名 is required", id)
+	}
+	ci := card_maker.CardInfo{Number: id, SetCode: setCodeFromID(id), SetName: setName, Name: name, Category: strings.TrimSpace(row["属性"]), Subtype: strings.TrimSpace(row["子类型"]), Rarity: strings.TrimSpace(row["稀有度"]), Description: row["效果"], Quote: row["引言"], Source: sheet}
+	var err error
+	if sheet == "人物" {
+		ci.Type = card_maker.TYPE_HERO_ZH
+	} else {
+		ci.Type = strings.TrimSpace(row["类型"])
+		if ci.Type != card_maker.TYPE_UNIT_ZH && ci.Type != card_maker.TYPE_ABILITY_ZH && ci.Type != card_maker.TYPE_ITEM_ZH {
+			return ci, fmt.Errorf("%s: invalid 类型 %q", id, ci.Type)
+		}
+	}
+	if ci.ManaCost, err = parseOptionalInt(row["入场／学习／使用／盖放"], "mana cost"); err != nil {
+		return ci, fmt.Errorf("%s: %w", id, err)
+	}
+	activationRaw := row["发动法力"]
+	if sheet == "人物" {
+		activationRaw = row["主动法力"]
+	}
+	if ci.ActivationMana, err = parseOptionalInt(activationRaw, "activation mana"); err != nil {
+		return ci, fmt.Errorf("%s: %w", id, err)
+	}
+	if ci.AttackValue, err = parseOptionalInt(row["攻击"], "attack"); err != nil {
+		return ci, fmt.Errorf("%s: %w", id, err)
+	}
+	ci.Attack = -1
+	if ci.AttackValue != nil {
+		ci.Attack = *ci.AttackValue
+	}
+	if ci.LifeValue, err = parseOptionalInt(row["生命"], "life"); err != nil {
+		return ci, fmt.Errorf("%s: %w", id, err)
+	}
+	ci.Life = -1
+	if ci.LifeValue != nil {
+		ci.Life = *ci.LifeValue
+	}
+	if ci.Cooldown, err = parseOptionalInt(row["冷却"], "cooldown"); err != nil {
+		return ci, fmt.Errorf("%s: %w", id, err)
+	}
+	if ci.SkillSlots, err = parseOptionalInt(row["技能槽"], "skill slots"); err != nil {
+		return ci, fmt.Errorf("%s: %w", id, err)
+	}
+	if ci.TechRequirement, err = parseElements(row["负载条件"]); err != nil {
+		return ci, fmt.Errorf("%s: %w", id, err)
+	}
+	if ci.ElementsGain, err = parseElements(row["负载"]); err != nil {
+		return ci, fmt.Errorf("%s: %w", id, err)
+	}
+	ci.ElementsCost = ci.TechRequirement
+	ci.ElementsExpense = card_maker.Elements{}
+	ci.Duration = -1
+	if ci.Cooldown != nil {
+		ci.Duration = *ci.Cooldown
+	}
+	ci.Power = -1
+	ci.Tag = ci.Subtype
+	ci.VersionName = ci.SetName
+	ci.OutputPath = filepath.ToSlash(filepath.Join(m.Params.OutputPath, ci.SetName, ci.Type, ci.Category, ci.Number+".jpg"))
+	if a, ok := m.artwork[id]; ok && a.LegacyID != nil {
+		ci.ArtRef = *a.LegacyID
+	}
+	return ci, nil
+}
+
+func (m *MassProducer) LoadCards() error {
+	var cards []card_maker.CardInfo
+	seen := map[string]bool{}
+	for i, path := range m.Params.XlsxPaths {
+		book, err := excelize.OpenFile(path)
 		if err != nil {
 			return err
 		}
-		return nil
-	}
-	if !m.Params.Overwrite {
-		return fmt.Errorf("path %s already exists", path)
-	}
-	return nil
-}
-
-func (m *MassProducer) cleanString(s string) string {
-	dic := map[string]string{
-		"？": "?",
-		"，": ",",
-		"。": ".",
-		"：": ":",
-		"；": ";",
-		"“": "\"",
-		"”": "\"",
-		"‘": "'",
-		"’": "'",
-		"（": "(",
-		"）": ")",
-		"【": "[",
-		"】": "]",
-		"！": "!",
-	}
-	r := []rune(s)
-	for i, v := range r {
-		if val, ok := dic[string(v)]; ok {
-			r[i] = []rune(val)[0]
+		setName := "基础包"
+		if i < len(m.Params.VersionNames) && m.Params.VersionNames[i] != "" {
+			setName = m.Params.VersionNames[i]
 		}
-	}
-	return string(r)
-}
-
-func (m *MassProducer) elementAnalysis(sentence string) *card_maker.Elements {
-	lastIndex := -1
-	eles := card_maker.Elements{}
-	if sentence == "" {
-		return &eles
-	}
-	r := []rune(sentence)
-	for i, v := range r {
-		if slices.Contains(card_maker.AllElements, string(v)) {
-			num, err := strconv.Atoi(string(r[lastIndex+1 : i]))
-			lastIndex = i
+		for _, sheet := range book.GetSheetList() {
+			rows, err := book.GetRows(sheet)
+			if err != nil {
+				book.Close()
+				return err
+			}
+			parsed, err := parseSheet(rows)
 			if err != nil {
 				continue
 			}
-			eles[string(v)] = num
-		}
-	}
-	return &eles
-}
-
-type Row map[string]string
-
-const (
-	ERR_SKIP = iota
-)
-
-func (m *MassProducer) getCardInfoFromRow(row Row, versionName string) (*card_maker.CardInfo, error) {
-	cardInfo := &card_maker.CardInfo{}
-	var err error
-	if len(row) == 0 {
-		return nil, fmt.Errorf("%v", ERR_SKIP)
-	}
-	if _, ok := row["编号"]; ok {
-		if row["编号"] == "" {
-			return nil, fmt.Errorf("%v", ERR_SKIP)
-		}
-		if len([]rune(row["编号"])) != 7 {
-			return nil, fmt.Errorf("number should be 7 digits")
-		}
-		cardInfo.Number = row["编号"]
-	} else {
-		return nil, fmt.Errorf("%v", ERR_SKIP)
-	}
-	if _, ok := row["属性"]; ok {
-		cardInfo.Category = m.cleanString(row["属性"])
-	} else {
-		return nil, fmt.Errorf("category is required")
-	}
-	if _, ok := row["名称"]; ok {
-		cardInfo.Name = m.cleanString(row["名称"])
-	} else {
-		return nil, fmt.Errorf("name is required")
-	}
-	if _, ok := row["种类"]; ok {
-		cardInfo.Tag = m.cleanString(row["种类"])
-	}
-	if _, ok := row["标签"]; ok {
-		cardInfo.Tag = m.cleanString(row["标签"])
-	}
-	if _, ok := row["生命"]; ok {
-		cardInfo.Life, err = strconv.Atoi(m.cleanString(row["生命"]))
-		if err != nil {
-			cardInfo.Life = -1
-		}
-	} else {
-		cardInfo.Life = -1
-	}
-	if _, ok := row["条件"]; ok {
-		cardInfo.ElementsCost = *m.elementAnalysis(m.cleanString(row["条件"]))
-	} else {
-		cardInfo.ElementsCost = card_maker.Elements{}
-	}
-	if _, ok := row["负载"]; ok {
-		cardInfo.ElementsGain = *m.elementAnalysis(m.cleanString(row["负载"]))
-	} else {
-		cardInfo.ElementsGain = card_maker.Elements{}
-	}
-	if _, ok := row["效果"]; ok {
-		cardInfo.Description = m.cleanString(row["效果"])
-	}
-	if _, ok := row["引言"]; ok {
-		cardInfo.Quote = m.cleanString(row["引言"])
-	}
-	if _, ok := row["威力"]; ok {
-		cardInfo.Power, err = strconv.Atoi(m.cleanString(row["威力"]))
-		if err != nil {
-			cardInfo.Power = -1
-		}
-	} else {
-		cardInfo.Power = -1
-	}
-	if _, ok := row["时间"]; ok {
-		cardInfo.Duration, err = strconv.Atoi(m.cleanString(row["时间"]))
-		if err != nil {
-			cardInfo.Duration = -1
-		}
-	} else {
-		cardInfo.Duration = -1
-	}
-	if _, ok := row["代价"]; ok {
-		cardInfo.ElementsExpense = *m.elementAnalysis(m.cleanString(row["代价"]))
-	} else {
-		cardInfo.ElementsExpense = card_maker.Elements{}
-	}
-	if _, ok := row["攻击"]; ok {
-		cardInfo.Attack, err = strconv.Atoi(m.cleanString(row["攻击"]))
-		if err != nil {
-			cardInfo.Attack = -1
-		}
-	} else {
-		cardInfo.Attack = -1
-	}
-	if _, ok := row["衍生"]; ok {
-		cleanStr := m.cleanString(row["衍生"])
-		//  split by whitespace
-		spawns := strings.Split(cleanStr, " ")
-		cardInfo.Spawns = []string{}
-		for _, spawn := range spawns {
-			// if it only contains whitespace, skip it
-			if spawn == "" {
-				continue
-			}
-
-			// if it can be parsed as int
-			// or it can be parsed as float
-
-			if _, err := strconv.Atoi(spawn); err == nil {
-				cardInfo.Spawns = append(cardInfo.Spawns, spawn)
-			} else if parsedSpawn, err := strconv.ParseFloat(spawn, 64); err == nil {
-				intSpawn := int(parsedSpawn)
-				cardInfo.Spawns = append(cardInfo.Spawns, strconv.Itoa(intSpawn))
-			} else {
-				log.Printf("%s %s has invalid spawn list %s\n", cardInfo.Number, cardInfo.Name, cleanStr)
-				continue
-			}
-		}
-	} else {
-		cardInfo.Spawns = []string{}
-	}
-
-	cardInfo.VersionNumber = string([]rune(cardInfo.Number)[3:4])
-	cardInfo.VersionName = versionName
-	tmpCardMaker := &card_maker.CardMaker{}
-	cardInfo.Type = tmpCardMaker.GetCardType(cardInfo)
-	cardInfo.OutputPath = m.GetOutputPath(cardInfo)
-	return cardInfo, nil
-}
-
-func (m *MassProducer) GetOutputPath(cardInfo *card_maker.CardInfo) string {
-	return filepath.Join(
-		OUTPUT_PATH,
-		cardInfo.VersionName,
-		cardInfo.Type,
-		cardInfo.Category,
-		cardInfo.Number+".jpg",
-	)
-}
-
-func (m *MassProducer) parseSheet(rows [][]string) []Row {
-	result := []Row{}
-	header := rows[0]
-	for i, row := range rows {
-		if i == 0 {
-			continue
-		}
-		r := Row{}
-		for j, cell := range row {
-			r[header[j]] = cell
-		}
-		result = append(result, r)
-	}
-	return result
-}
-
-func (m *MassProducer) rgbaToCmyk(img *image.RGBA) *image.CMYK {
-	bounds := img.Bounds()
-	cmykImg := image.NewCMYK(bounds)
-
-	// Iterate over every pixel
-	for by := bounds.Min.Y; by < bounds.Max.Y; by++ {
-		for bx := bounds.Min.X; bx < bounds.Max.X; bx++ {
-			r, g, b, _ := img.At(bx, by).RGBA()
-			c, m, y, k := color.RGBToCMYK(uint8(r>>8), uint8(g>>8), uint8(b>>8))
-			cmykImg.Set(bx, by, color.CMYK{C: c, M: m, Y: y, K: k})
-		}
-	}
-
-	return cmykImg
-}
-
-func (m *MassProducer) saveCmykAsTiff(img *image.CMYK, filename string) error {
-	// Create output file
-	_, err := os.Stat(filename)
-	if err == nil && !m.Params.Overwrite {
-		return fmt.Errorf("file %s already exists", filename)
-	}
-	outFile, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer outFile.Close()
-
-	// Encode and save the image as TIFF
-	err = tiff.Encode(outFile, img, nil)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (m *MassProducer) SaveRgbaAsJpeg(img *image.RGBA, filename string) error {
-	// Create output file
-	_, err := os.Stat(filename)
-	if err == nil && !m.Params.Overwrite {
-		return fmt.Errorf("file %s already exists", filename)
-	}
-
-	outFile, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer outFile.Close()
-
-	// Set JPEG quality (from 1 to 100, where 100 is the best quality)
-	options := &jpeg.Options{Quality: 100}
-
-	// Encode the RGBA image as a JPEG and save to the file
-	err = jpeg.Encode(outFile, img, options)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (m *MassProducer) addLog(log string) {
-	m.LogMu.Lock()
-	m.Log = append(m.Log, log)
-	m.LogMu.Unlock()
-}
-
-func (m *MassProducer) dealWithSheet(xlsxFile *excelize.File, sheetName, versionName, drawingPath string) {
-	newConfig := m.Config.Copy()
-	newConfig.DrawingPath = drawingPath
-
-	cardMaker := card_maker.NewCardMaker(*newConfig)
-	rawRows, err := xlsxFile.GetRows(sheetName)
-	if err != nil {
-		log.Fatalf("get rows failed when reading sheet %v", sheetName)
-		return
-	}
-	rows := m.parseSheet(rawRows)
-
-	for _, row := range rows {
-		cardInfo, err := m.getCardInfoFromRow(row, versionName)
-		if err != nil {
-			if err.Error() == fmt.Sprintf("%v", ERR_SKIP) {
-				continue
-			} else {
-				m.addLog(fmt.Sprintf("get card info from row failed %v, row: %v\n", err, row))
-				continue
-			}
-		}
-		// should I draw this
-		if m.OldAllCardsInfos != nil && m.Params.NewCardsOnly {
-			_, err := os.Stat(cardInfo.OutputPath)
-			if ci, ok := m.OldAllCardsInfos[cardInfo.Number]; ok {
-				if ci.Equals(*cardInfo) && err == nil {
-					// already exists, add it to all card infos, skip it
-					m.Mu.Lock()
-					m.AllCardInfos = append(m.AllCardInfos, *cardInfo)
-					m.Mu.Unlock()
-					continue
+			for _, row := range parsed {
+				ci, err := m.cardFromRow(row, sheet, setName)
+				if err != nil {
+					book.Close()
+					return err
 				}
+				if seen[ci.Number] {
+					book.Close()
+					return fmt.Errorf("duplicate card id %s", ci.Number)
+				}
+				seen[ci.Number] = true
+				cards = append(cards, ci)
 			}
 		}
+		book.Close()
+	}
+	sort.Slice(cards, func(i, j int) bool { return cards[i].Number < cards[j].Number })
+	m.AllCardInfos = cards
+	return nil
+}
 
-		// start drawing
-		img, err := cardMaker.MakeCard(cardInfo)
-		if err != nil {
-			m.addLog(fmt.Sprintf("make card failed %v, card info: %v\n", err, cardInfo))
+func (m *MassProducer) Validate() error {
+	if err := m.LoadCards(); err != nil {
+		return err
+	}
+	counts := map[string]int{}
+	for _, c := range m.AllCardInfos {
+		counts[c.Type]++
+	}
+	if len(m.AllCardInfos) != 134 || counts["人物"] != 14 || counts["伙伴"] != 48 || counts["技能"] != 28 || counts["道具"] != 44 {
+		return fmt.Errorf("unexpected card counts: total=%d types=%v", len(m.AllCardInfos), counts)
+	}
+	return nil
+}
+
+func (m *MassProducer) findArtwork(ci card_maker.CardInfo) string {
+	if len(m.artworkFiles) == 0 {
+		for _, root := range m.Params.DrawingPaths {
+			_ = filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+				if err != nil || entry.IsDir() {
+					return nil
+				}
+				ext := strings.ToLower(filepath.Ext(path))
+				switch ext {
+				case ".png", ".jpg", ".jpeg", ".webp", ".tiff", ".jfif":
+					m.artworkFiles[strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name()))] = path
+				}
+				return nil
+			})
+		}
+	}
+	ids := []string{ci.Number}
+	if ci.ArtRef != "" {
+		ids = append(ids, ci.ArtRef)
+	}
+	for _, id := range ids {
+		if path := m.artworkFiles[id]; path != "" {
+			return path
+		}
+	}
+	return ""
+}
+
+func (m *MassProducer) ProduceIDs(ids []string) error {
+	previousOverwrite := m.Params.Overwrite
+	m.Params.Overwrite = true
+	defer func() { m.Params.Overwrite = previousOverwrite }()
+	if err := m.LoadCards(); err != nil {
+		return err
+	}
+	wanted := map[string]bool{}
+	for _, id := range ids {
+		wanted[id] = true
+	}
+	selected := make([]card_maker.CardInfo, 0, len(ids))
+	for _, card := range m.AllCardInfos {
+		if wanted[card.Number] {
+			selected = append(selected, card)
+			delete(wanted, card.Number)
+		}
+	}
+	if len(wanted) != 0 {
+		missing := make([]string, 0, len(wanted))
+		for id := range wanted {
+			missing = append(missing, id)
+		}
+		sort.Strings(missing)
+		return fmt.Errorf("unknown card ids: %s", strings.Join(missing, ", "))
+	}
+	return m.renderCards(selected)
+}
+
+func (m *MassProducer) Produce() error {
+	if err := m.LoadCards(); err != nil {
+		return err
+	}
+	if err := m.renderCards(m.AllCardInfos); err != nil {
+		return err
+	}
+	return m.writeMetadata()
+}
+
+func (m *MassProducer) renderCards(cards []card_maker.CardInfo) error {
+	missing := []string{}
+	for i := range cards {
+		ci := &cards[i]
+		art := m.findArtwork(*ci)
+		if art == "" {
+			missing = append(missing, ci.Number)
 			continue
 		}
-		// get the dirs to the output path
-		err = m.makeDir(filepath.Dir(cardInfo.OutputPath))
+		cfg := m.Config.Copy()
+		cfg.StaticDrawing = true
+		cfg.StaticDrawingPath = strings.TrimSuffix(art, filepath.Ext(art))
+		maker := card_maker.NewCardMaker(*cfg)
+		renderCard := *ci
+		if category, ok := elementAliases[renderCard.Category]; ok {
+			renderCard.Category = category
+		}
+		img, err := maker.MakeCard(&renderCard)
 		if err != nil {
-			log.Fatalf("make dir failed %v", err)
+			return fmt.Errorf("%s: %w", ci.Number, err)
 		}
-
-		if m.Params.IsPrintingVersion {
-			// convert to cmyk
-			// change the extension to tiff
-			cardInfo.OutputPath = strings.Replace(cardInfo.OutputPath, ".jpg", ".tiff", 1)
-			cmykImg := m.rgbaToCmyk(img)
-			err = m.saveCmykAsTiff(cmykImg, cardInfo.OutputPath)
-			if err != nil {
-				log.Fatalf("save cmyk as tiff failed %v", err)
-				continue
-			}
-		} else {
-			err = m.SaveRgbaAsJpeg(img, cardInfo.OutputPath)
-			if err != nil {
-				log.Fatalf("save rgba as jpeg failed %v", err)
-				continue
-			}
+		if err = os.MkdirAll(filepath.Dir(filepath.FromSlash(ci.OutputPath)), 0755); err != nil {
+			return err
 		}
-		// add to all card infos
-		m.Mu.Lock()
-		m.AllCardInfos = append(m.AllCardInfos, *cardInfo)
-		m.Mu.Unlock()
-
-	}
-
-}
-
-func (m *MassProducer) dealWithXlsx(xlsxPath, drawingPath, versionName string, p *mpb.Progress) {
-	xlsxFile, err := excelize.OpenFile(xlsxPath)
-	if err != nil {
-		log.Fatalf("open file %s failed", xlsxPath)
-		return
-	}
-	sheetList := xlsxFile.GetSheetList()
-	bar := p.New(int64(len(sheetList)), // total value
-		mpb.BarStyle().Lbound("|").Filler("█").Tip(">").Padding("░").Rbound("|"),
-		mpb.PrependDecorators(
-			decor.Name(versionName+" "+xlsxPath+": ", decor.WCSyncSpaceR),
-			decor.CountersNoUnit("%d/%d"),
-		),
-		mpb.AppendDecorators(
-			decor.Percentage(),
-		),
-	)
-	wg := sync.WaitGroup{}
-	for _, sheetName := range sheetList {
-		wg.Add(1)
-		go func() {
-			m.dealWithSheet(xlsxFile, sheetName, versionName, drawingPath)
-			bar.Increment()
-			defer wg.Done()
-		}()
-	}
-	wg.Wait()
-	bar.SetTotal(int64(len(sheetList)), true)
-
-}
-
-func (m *MassProducer) SanityCheck() {
-	// this function checks whether all the images can be found
-	fmt.Println("Sanity check ...")
-	numberOfSheets := len(m.Params.XlsxPaths)
-	wg := sync.WaitGroup{}
-
-	for i := 0; i < numberOfSheets; i++ {
-		xlsxPath := m.Params.XlsxPaths[i]
-		drawingPath := m.Params.DrawingPaths[i]
-		wg.Add(1)
-
-		go func() {
-			// m.dealWithXlsx(xlsxPath, drawingPath, versionName, p)
-			xlsxFile, err := excelize.OpenFile(xlsxPath)
-			if err != nil {
-				log.Fatalf("open file %s failed", xlsxPath)
-				return
-			}
-
-			sheetList := xlsxFile.GetSheetList()
-
-			wg2 := sync.WaitGroup{}
-			for _, sheetName := range sheetList {
-				wg2.Add(1)
-				go func() {
-					// m.dealWithSheet(xlsxFile, sheetName, versionName, drawingPath)
-					rawRows, err := xlsxFile.GetRows(sheetName)
-					if err != nil {
-						log.Fatalf("get rows failed when reading sheet %v", sheetName)
-						return
-					}
-					rows := m.parseSheet(rawRows)
-					for _, row := range rows {
-						num, ok := row["编号"]
-						if !ok {
-							continue
-						}
-						if num == "" {
-							continue
-						}
-
-						possibleExtentions := []string{".webp", ".jpg", ".png", ".jpeg", ".jfif", ".tiff"}
-						found := false
-						for _, ext := range possibleExtentions {
-							// try to find the image in drawing path
-							imgPath := filepath.Join(drawingPath, num+ext)
-							_, err := os.Stat(imgPath)
-							if err == nil {
-								found = true
-								break
-							}
-						}
-						if !found {
-							m.SanityMu.Lock()
-							m.SanityCheckPassed = false
-							m.SanityMu.Unlock()
-							m.addLog(fmt.Sprintf("image not found for %s\n", num))
-						}
-
-					}
-					defer wg2.Done()
-				}()
-			}
-			wg2.Wait()
-
-			defer wg.Done()
-		}()
-	}
-	wg.Wait()
-
-	if m.SanityCheckPassed {
-		fmt.Println("Sanity check passed")
-	} else {
-		fmt.Println("Sanity check failed:")
-		for _, log := range m.Log {
-			fmt.Println(log)
+		if _, err = os.Stat(filepath.FromSlash(ci.OutputPath)); err == nil && !m.Params.Overwrite {
+			return fmt.Errorf("file %s already exists", ci.OutputPath)
+		}
+		if err = saveImage(img, filepath.FromSlash(ci.OutputPath), m.Params.IsPrintingVersion); err != nil {
+			return err
 		}
 	}
+	if len(missing) > 0 {
+		return fmt.Errorf("missing artwork for %d cards: %s", len(missing), strings.Join(missing, ", "))
+	}
+	return nil
 }
 
-func (m *MassProducer) Produce() {
-	// xlsxFile, err := excelize.OpenFile()
-	m.SanityCheck()
-	if !m.SanityCheckPassed {
-		return
+func (m *MassProducer) writeMetadata() error {
+	if err := os.MkdirAll(m.Params.OutputPath, 0755); err != nil {
+		return err
 	}
-	numberOfSheets := len(m.Params.XlsxPaths)
-	wg := sync.WaitGroup{}
-	p := mpb.New(mpb.WithWidth(64))
+	b, _ := json.MarshalIndent(m.AllCardInfos, "", "  ")
+	if err := os.WriteFile(filepath.Join(m.Params.OutputPath, "all_card_infos.json"), b, 0644); err != nil {
+		return err
+	}
+	simple := map[string]string{}
+	for _, c := range m.AllCardInfos {
+		simple[c.Number] = filepath.ToSlash(c.OutputPath)
+	}
+	b, _ = json.MarshalIndent(simple, "", "  ")
+	return os.WriteFile(filepath.Join(m.Params.OutputPath, "simplified_card_infos.json"), b, 0644)
+}
 
-	for i := 0; i < numberOfSheets; i++ {
-		xlsxPath := m.Params.XlsxPaths[i]
-		drawingPath := m.Params.DrawingPaths[i]
-		versionName := m.Params.VersionNames[i]
-		wg.Add(1)
-
-		go func() {
-			m.dealWithXlsx(xlsxPath, drawingPath, versionName, p)
-			defer wg.Done()
-		}()
+func saveImage(img *image.RGBA, path string, printing bool) error {
+	if printing {
+		path = strings.TrimSuffix(path, filepath.Ext(path)) + ".tiff"
+		cmyk := image.NewCMYK(img.Bounds())
+		for y := img.Bounds().Min.Y; y < img.Bounds().Max.Y; y++ {
+			for x := img.Bounds().Min.X; x < img.Bounds().Max.X; x++ {
+				r, g, b, _ := img.At(x, y).RGBA()
+				c, m, yv, k := color.RGBToCMYK(uint8(r>>8), uint8(g>>8), uint8(b>>8))
+				cmyk.Set(x, y, color.CMYK{C: c, M: m, Y: yv, K: k})
+			}
+		}
+		f, e := os.Create(path)
+		if e != nil {
+			return e
+		}
+		defer f.Close()
+		return tiff.Encode(f, cmyk, nil)
 	}
-	wg.Wait()
-	p.Wait()
-	// save all card infos
-	jsonBytes, err := json.MarshalIndent(m.AllCardInfos, "", "  ")
-	if err != nil {
-		log.Fatalf("marshal all card infos failed %v", err)
+	f, e := os.Create(path)
+	if e != nil {
+		return e
 	}
-	err = os.WriteFile(filepath.Join(OUTPUT_PATH, "all_card_infos.json"), jsonBytes, os.ModePerm)
-	if err != nil {
-		log.Fatalf("write all card infos failed %v", err)
-	}
-	// create simplified cards infos
-	simplifiedCardInfos := map[string]string{}
-	for _, cardInfo := range m.AllCardInfos {
-		simplifiedCardInfos[cardInfo.Number] = cardInfo.OutputPath
-	}
-	jsonBytes, err = json.MarshalIndent(simplifiedCardInfos, "", "  ")
-	if err != nil {
-		log.Fatalf("marshal simplified card infos failed %v", err)
-	}
-	err = os.WriteFile(filepath.Join(OUTPUT_PATH, "simplified_card_infos.json"), jsonBytes, os.ModePerm)
-	if err != nil {
-		log.Fatalf("write simplified card infos failed %v", err)
-	}
-	// print log
-	for _, log := range m.Log {
-		fmt.Println(log)
-	}
+	defer f.Close()
+	return jpeg.Encode(f, img, &jpeg.Options{Quality: 100})
 }

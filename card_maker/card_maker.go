@@ -91,7 +91,7 @@ func (cardMaker *CardMaker) textWrapAndPlaceHolderReplacement(text string, width
 		character := string(runes[index])
 		var recordPlaceHolder []rune
 		recordPlaceHolder = nil
-		if character == "\\" {
+		if character == "\\" && index+1 < len(runes) {
 			characters := string(runes[index : index+2])
 			if _, ok := cardMaker.Config.PlacdholderToImage[characters]; ok {
 				recordPlaceHolder = runes[index : index+2]
@@ -274,7 +274,7 @@ func (cardMaker *CardMaker) getDigit(numberString string, leftToRightPos int) in
 }
 
 func (cardMaker *CardMaker) isLegend(cardInfo *CardInfo) bool {
-	return cardInfo.Type == TYPE_HERO_ZH || (cardMaker.getDigit(cardInfo.Number, 2) == 1)
+	return cardInfo.Type == TYPE_HERO_ZH || cardInfo.Rarity == "传奇"
 }
 
 func (cardMaker *CardMaker) drawRoundedRect(img *image.RGBA, left, top, right, bottom, radius, borderWidth int, fillColor, borderColor color.RGBA) *image.RGBA {
@@ -628,18 +628,11 @@ func (cardMaker *CardMaker) drawCost(baseImage *image.RGBA, cardInfo *CardInfo) 
 }
 
 func (cardMaker *CardMaker) GetCardType(cardInfo *CardInfo) string {
-	dig := cardMaker.getDigit(cardInfo.Number, 0)
-	if dig == 1 {
-		return TYPE_UNIT_ZH
-	} else if dig == 2 {
-		return TYPE_ITEM_ZH
-	} else if dig == 3 {
-		return TYPE_ABILITY_ZH
-	} else if dig == 4 {
-		return TYPE_HERO_ZH
-	} else {
-		log.Fatalf("invalid card type: %v\n", cardInfo.Number)
-		return TYPE_HERO_ZH
+	switch cardInfo.Type {
+	case TYPE_UNIT_ZH, TYPE_ITEM_ZH, TYPE_ABILITY_ZH, TYPE_HERO_ZH:
+		return cardInfo.Type
+	default:
+		return ""
 	}
 }
 
@@ -901,7 +894,7 @@ func (cardMaker *CardMaker) getLifeImage() (*image.RGBA, error) {
 
 func (cardMaker *CardMaker) drawLifeAndAttack(baseImage *image.RGBA, cardInfo *CardInfo) (*image.RGBA, error) {
 	leftPointer := 0
-	if cardInfo.Life >= 0 {
+	if cardInfo.Life > 0 {
 		lifeImage, err := cardMaker.getLifeImage()
 		if err != nil {
 			return baseImage, err
@@ -947,7 +940,7 @@ func (cardMaker *CardMaker) drawLifeAndAttack(baseImage *image.RGBA, cardInfo *C
 			cardMaker.Config.LifeFontColor,
 		)
 	}
-	if cardInfo.Attack < 0 {
+	if cardInfo.Attack <= 0 {
 		return baseImage, nil
 	} else {
 		attackImage, err := cardMaker.getAttackImage()
@@ -960,7 +953,7 @@ func (cardMaker *CardMaker) drawLifeAndAttack(baseImage *image.RGBA, cardInfo *C
 			return baseImage, err
 		}
 		estimatedLength := cardMaker.getStringWidth(strconv.Itoa(cardInfo.Attack), font, float64(cardMaker.Config.AttackFontSize)) + cardMaker.Config.AttackPadding*3 + cardMaker.Config.AttackIconWidth
-		if cardInfo.Life < 0 {
+		if cardInfo.Life <= 0 {
 			leftPointer = cardMaker.Config.LifeRectLeft
 		} else {
 			leftPointer += cardMaker.Config.LifeRectLeft + cardMaker.Config.LifePadding + cardMaker.getStringWidth(strconv.Itoa(cardInfo.Life), font, float64(cardMaker.Config.LifeFontSize))
@@ -1174,6 +1167,85 @@ func (cardMaker *CardMaker) drawNumber(baseImage *image.RGBA, cardInfo *CardInfo
 	)
 	return baseImage, nil
 }
+
+// drawNewSchemaStats renders temporary native badges for the redesigned scalar
+// values. Their geometric symbols can later be replaced by final art assets
+// without changing badge positions or the data model.
+func (cardMaker *CardMaker) drawNewSchemaStats(baseImage *image.RGBA, cardInfo *CardInfo) (*image.RGBA, error) {
+	font, err := cardMaker.loadFont(filepath.Join(cardMaker.Config.FontPath, cardMaker.Config.NumberFont))
+	if err != nil {
+		return baseImage, err
+	}
+	ratio := cardMaker.Config.CardWidth / 590
+	draw := func(kind string, value *int, left, top int, fill color.RGBA) {
+		if value == nil || *value <= 0 {
+			return
+		}
+		width, height := float64(78*ratio), float64(50*ratio)
+		dc := gg.NewContextForRGBA(baseImage)
+		dc.SetColor(fill)
+		dc.DrawRoundedRectangle(float64(left), float64(top), width, height, height/2)
+		dc.FillPreserve()
+		dc.SetLineWidth(float64(3 * ratio))
+		dc.SetColor(color.Black)
+		dc.Stroke()
+		cx, cy, radius := float64(left+25*ratio), float64(top+25*ratio), float64(14*ratio)
+		dc.SetColor(color.RGBA{255, 255, 255, 255})
+		dc.DrawCircle(cx, cy, radius)
+		dc.FillPreserve()
+		dc.SetLineWidth(float64(2 * ratio))
+		dc.SetColor(color.Black)
+		dc.Stroke()
+		dc.SetLineWidth(float64(3 * ratio))
+		dc.SetColor(color.Black)
+		switch kind {
+		case "mana":
+			dc.MoveTo(cx, cy-radius*.65)
+			dc.LineTo(cx+radius*.55, cy)
+			dc.LineTo(cx, cy+radius*.65)
+			dc.LineTo(cx-radius*.55, cy)
+			dc.ClosePath()
+			dc.Stroke()
+		case "activation":
+			dc.MoveTo(cx+radius*.15, cy-radius*.75)
+			dc.LineTo(cx-radius*.45, cy+radius*.05)
+			dc.LineTo(cx, cy+radius*.05)
+			dc.LineTo(cx-radius*.15, cy+radius*.75)
+			dc.LineTo(cx+radius*.5, cy-radius*.1)
+			dc.LineTo(cx+radius*.05, cy-radius*.1)
+			dc.ClosePath()
+			dc.Fill()
+		case "cooldown":
+			dc.DrawArc(cx, cy, radius*.58, -2.7, 2.1)
+			dc.Stroke()
+			dc.MoveTo(cx+radius*.55, cy-radius*.3)
+			dc.LineTo(cx+radius*.7, cy+radius*.2)
+			dc.LineTo(cx+radius*.2, cy)
+			dc.ClosePath()
+			dc.Fill()
+		case "slots":
+			dc.MoveTo(cx, cy-radius*.72)
+			dc.LineTo(cx+radius*.22, cy-radius*.22)
+			dc.LineTo(cx+radius*.72, cy)
+			dc.LineTo(cx+radius*.22, cy+radius*.22)
+			dc.LineTo(cx, cy+radius*.72)
+			dc.LineTo(cx-radius*.22, cy+radius*.22)
+			dc.LineTo(cx-radius*.72, cy)
+			dc.LineTo(cx-radius*.22, cy-radius*.22)
+			dc.ClosePath()
+			dc.Fill()
+		}
+		valueText := strconv.Itoa(*value)
+		textLeft := left + 52*ratio - cardMaker.getStringWidth(valueText, font, float64(cardMaker.Config.NumberFontSize))/2
+		textTop := top + (50*ratio-cardMaker.getStringHeight(font, float64(cardMaker.Config.NumberFontSize)))/2
+		baseImage = cardMaker.addTextToImage(baseImage, valueText, textLeft, textTop, font, float64(cardMaker.Config.NumberFontSize), color.RGBA{0, 0, 0, 255})
+	}
+	draw("mana", cardInfo.ManaCost, cardMaker.Config.CardWidth-88*ratio, 530*ratio, color.RGBA{244, 210, 92, 255})
+	draw("activation", cardInfo.ActivationMana, cardMaker.Config.CardWidth-88*ratio, 82*ratio, color.RGBA{116, 190, 255, 255})
+	draw("cooldown", cardInfo.Cooldown, cardMaker.Config.CardWidth-178*ratio, 800*ratio, color.RGBA{174, 154, 225, 255})
+	draw("slots", cardInfo.SkillSlots, cardMaker.Config.CardWidth-88*ratio, 530*ratio, color.RGBA{127, 211, 166, 255})
+	return baseImage, nil
+}
 func (cardMaker *CardMaker) makeUnitCard(cardInfo *CardInfo) (*image.RGBA, error) {
 	baseImage, err := cardMaker.prepareOutline(cardInfo)
 	if err != nil {
@@ -1184,6 +1256,14 @@ func (cardMaker *CardMaker) makeUnitCard(cardInfo *CardInfo) (*image.RGBA, error
 		return nil, err
 	}
 	baseImage, err = cardMaker.drawCost(baseImage, cardInfo)
+	if err != nil {
+		return nil, err
+	}
+	baseImage, err = cardMaker.drawExpense(baseImage, cardInfo)
+	if err != nil {
+		return nil, err
+	}
+	baseImage, err = cardMaker.drawNewSchemaStats(baseImage, cardInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -1231,6 +1311,10 @@ func (cardMaker *CardMaker) makeAbilityCard(cardInfo *CardInfo) (*image.RGBA, er
 	if err != nil {
 		return nil, err
 	}
+	baseImage, err = cardMaker.drawNewSchemaStats(baseImage, cardInfo)
+	if err != nil {
+		return nil, err
+	}
 	baseImage, err = cardMaker.drawTypeLogo(baseImage, cardInfo)
 	if err != nil {
 		return nil, err
@@ -1240,10 +1324,6 @@ func (cardMaker *CardMaker) makeAbilityCard(cardInfo *CardInfo) (*image.RGBA, er
 		return nil, err
 	}
 	baseImage, err = cardMaker.drawDescriptionAndQuote(baseImage, cardInfo)
-	if err != nil {
-		return nil, err
-	}
-	baseImage, err = cardMaker.drawPowerOrDuration(baseImage, cardInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -1275,6 +1355,10 @@ func (cardMaker *CardMaker) makeItemCard(cardInfo *CardInfo) (*image.RGBA, error
 	if err != nil {
 		return nil, err
 	}
+	baseImage, err = cardMaker.drawNewSchemaStats(baseImage, cardInfo)
+	if err != nil {
+		return nil, err
+	}
 	baseImage, err = cardMaker.drawTypeLogo(baseImage, cardInfo)
 	if err != nil {
 		return nil, err
@@ -1288,10 +1372,6 @@ func (cardMaker *CardMaker) makeItemCard(cardInfo *CardInfo) (*image.RGBA, error
 		return nil, err
 	}
 	baseImage, err = cardMaker.drawGain(baseImage, cardInfo)
-	if err != nil {
-		return nil, err
-	}
-	baseImage, err = cardMaker.drawPowerOrDuration(baseImage, cardInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -1316,6 +1396,14 @@ func (cardMaker *CardMaker) makeHeroCard(cardInfo *CardInfo) (*image.RGBA, error
 		return nil, err
 	}
 	baseImage, err = cardMaker.drawCost(baseImage, cardInfo)
+	if err != nil {
+		return nil, err
+	}
+	baseImage, err = cardMaker.drawExpense(baseImage, cardInfo)
+	if err != nil {
+		return nil, err
+	}
+	baseImage, err = cardMaker.drawNewSchemaStats(baseImage, cardInfo)
 	if err != nil {
 		return nil, err
 	}

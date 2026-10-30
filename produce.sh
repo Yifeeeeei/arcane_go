@@ -1,1 +1,1 @@
-go run github.com/Yifeeeeei/arcane_go
+go run .

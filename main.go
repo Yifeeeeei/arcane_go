@@ -8,47 +8,53 @@ import (
 )
 
 func main() {
-
-	args := os.Args
-	if len(args) == 2 && args[1] == "gen" {
-		// generate json
-		templatePath := "template_mass_producer_params_xlsx.json"
-		templateParams := MassProducerParams{}
-		// read the template
-		templateFile, err := os.Open(templatePath)
+	args := os.Args[1:]
+	if len(args) > 0 && args[0] == "gen" {
+		b, err := os.ReadFile("template_mass_producer_params_xlsx.json")
 		if err != nil {
 			panic(err)
 		}
-		defer templateFile.Close()
-		decoder := json.NewDecoder(templateFile)
-		err = decoder.Decode(&templateParams)
-		if err != nil {
+		var p MassProducerParams
+		if err = json.Unmarshal(b, &p); err != nil {
 			panic(err)
 		}
-		// write the template
-		outputPath := "mass_producer_params_xlsx.json"
-		outputFile, err := os.Create(outputPath)
-		if err != nil {
-			panic(err)
-		}
-		defer outputFile.Close()
-		// marshal with indent
-		encoder := json.NewEncoder(outputFile)
-		encoder.SetIndent("", "    ")
-		err = encoder.Encode(templateParams)
-
-		if err != nil {
+		b, _ = json.MarshalIndent(p, "", "    ")
+		if err = os.WriteFile("mass_producer_params_xlsx.json", append(b, '\n'), 0644); err != nil {
 			panic(err)
 		}
 		return
-
 	}
-	m, err := NewMassProducer("mass_producer_params_xlsx.json")
+	paramPath := "mass_producer_params_xlsx.json"
+	if len(args) > 0 && args[0] == "render" {
+		paramPath = "template_mass_producer_params_xlsx.json"
+	}
+	if len(args) > 1 && args[0] == "validate" {
+		paramPath = args[1]
+	}
+	m, err := NewMassProducer(paramPath)
 	if err != nil {
 		panic(err)
 	}
-	timeNow := time.Now()
-	m.Produce()
-	timeElapsed := time.Since(timeNow)
-	fmt.Println("Time elapsed: ", timeElapsed)
+	start := time.Now()
+	if len(args) > 0 && args[0] == "validate" {
+		if err = m.Validate(); err != nil {
+			panic(err)
+		}
+		fmt.Printf("validated %d cards\n", len(m.AllCardInfos))
+		return
+	}
+	if len(args) > 0 && args[0] == "render" {
+		if len(args) < 2 {
+			panic("usage: go run . render CARD_ID [CARD_ID ...]")
+		}
+		if err = m.ProduceIDs(args[1:]); err != nil {
+			panic(err)
+		}
+		fmt.Printf("rendered %d cards\n", len(args)-1)
+		return
+	}
+	if err = m.Produce(); err != nil {
+		panic(err)
+	}
+	fmt.Println("Time elapsed:", time.Since(start))
 }

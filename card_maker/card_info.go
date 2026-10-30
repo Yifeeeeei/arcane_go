@@ -3,78 +3,55 @@ package card_maker
 import (
 	"encoding/json"
 	"log"
+	"reflect"
 )
 
+// CardInfo is the canonical schema used by the redesigned base set. Optional
+// numeric cells are pointers so blank and an explicitly printed zero differ.
 type CardInfo struct {
-	Number string `json:"number"`
+	Number          string   `json:"number"`
+	SetCode         string   `json:"set_code"`
+	SetName         string   `json:"set_name"`
+	Type            string   `json:"type"`
+	Name            string   `json:"name"`
+	Category        string   `json:"category"`
+	Subtype         string   `json:"subtype"`
+	Tag             string   `json:"-"`
+	Rarity          string   `json:"rarity,omitempty"`
+	ManaCost        *int     `json:"mana_cost,omitempty"`
+	ActivationMana  *int     `json:"activation_mana,omitempty"`
+	TechRequirement Elements `json:"tech_requirement,omitempty"`
+	ElementsGain    Elements `json:"elements_gain,omitempty"`
+	AttackValue     *int     `json:"attack,omitempty"`
+	LifeValue       *int     `json:"life,omitempty"`
+	Cooldown        *int     `json:"cooldown,omitempty"`
+	SkillSlots      *int     `json:"skill_slots,omitempty"`
+	Description     string   `json:"description"`
+	Quote           string   `json:"quote"`
+	Source          string   `json:"source,omitempty"`
+	ArtRef          string   `json:"art_ref,omitempty"`
+	OutputPath      string   `json:"output_path"`
 
-	Type          string   `json:"type"`
-	Name          string   `json:"name"`
-	Category      string   `json:"category"`
-	Tag           string   `json:"tag"`
-	Description   string   `json:"description"`
-	Quote         string   `json:"quote"`
-	ElementsCost  Elements `json:"elements_cost"`
-	ElementsGain  Elements `json:"elements_gain"`
-	VersionNumber string   `json:"version_number"`
-	VersionName   string   `json:"version_name"`
-
-	// unit cards
-	Attack int `json:"attack"`
-	Life   int `json:"life"`
-
-	// ability
-	Duration        int      `json:"duration"`
-	Power           int      `json:"power"`
-	ElementsExpense Elements `json:"elements_expense"`
-
-	// spawns
-	Spawns []string `json:"spawns"`
-
-	OutputPath string `json:"output_path"`
+	// Deprecated renderer adapter. New imports populate these from the fields
+	// above; they are deliberately excluded from the exported schema.
+	ElementsCost    Elements `json:"-"`
+	ElementsExpense Elements `json:"-"`
+	Attack          int      `json:"-"`
+	Life            int      `json:"-"`
+	Duration        int      `json:"-"`
+	Power           int      `json:"-"`
+	Spawns          []string `json:"-"`
+	VersionNumber   string   `json:"-"`
+	VersionName     string   `json:"-"`
 }
 
-// make it comparable
-func (cardInfo CardInfo) Equals(other CardInfo) bool {
-	cond1 := cardInfo.Number == other.Number &&
-		cardInfo.Type == other.Type &&
-		cardInfo.Name == other.Name &&
-		cardInfo.Category == other.Category &&
-		cardInfo.Tag == other.Tag &&
-		cardInfo.Description == other.Description &&
-		cardInfo.Quote == other.Quote &&
-		cardInfo.ElementsCost.Equals(other.ElementsCost) &&
-		cardInfo.ElementsGain.Equals(other.ElementsGain) &&
-		cardInfo.VersionNumber == other.VersionNumber &&
-		cardInfo.VersionName == other.VersionName &&
-		cardInfo.Attack == other.Attack &&
-		cardInfo.Life == other.Life &&
-		cardInfo.Duration == other.Duration &&
-		cardInfo.Power == other.Power &&
-		cardInfo.ElementsExpense.Equals(other.ElementsExpense) &&
-		cardInfo.OutputPath == other.OutputPath
-	if !cond1 {
-		return false
-	}
-
-	// compare spawns
-	if len(cardInfo.Spawns) != len(other.Spawns) {
-		return false
-	}
-	for i, spawn := range cardInfo.Spawns {
-		if spawn != other.Spawns[i] {
-			return false
-		}
-	}
-	return cond1
-}
+func (cardInfo CardInfo) Equals(other CardInfo) bool { return reflect.DeepEqual(cardInfo, other) }
 
 func (cardInfo CardInfo) String() string {
-	jsonByte, err := json.MarshalIndent(cardInfo, "", "  ")
+	b, err := json.MarshalIndent(cardInfo, "", "  ")
 	if err != nil {
 		log.Println(err)
 		return ""
-	} else {
-		return string(jsonByte)
 	}
+	return string(b)
 }

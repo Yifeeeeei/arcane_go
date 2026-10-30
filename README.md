@@ -1,82 +1,61 @@
 # ArcaneGo
 
-requires go >= 1.22
+奥术纪元卡牌批量导入与制图工具。当前数据结构对应 `new_fork` 中的重制版基础包，要求 Go 1.22 或更新版本。
 
-## if you have makefile
+## 新版数据约定
 
-Generate settings:
+- 工作簿是卡牌规则数据的唯一真源。新版编号使用 `B + 属性码 + 类型码 + 三位序号`，例如 `BFH001`（基础包／火焰／人物）、`BFC001`（基础包／火焰／伙伴）、`BFS001`（基础包／火焰／技能）、`BAI001`（基础包／奥术／道具）。导入仍以表中显式字段为准，不会反向用编号覆盖规则数据。
+- 支持人物、奥术、火、水四张工作表，共 134 张卡。
+- 法力是单一整数；负载条件和负载是元素向量，两者互不替代。
+- 空白数值与明确填写的 `0` 会分别保存。
+- 新版已移除旧“威力／防御”字段；技能使用“攻击”和“冷却”。
 
-```bash
-make gen
-```
+## 使用
 
-config mass_producer_params_xlsx.json
-
-then
-
-```bash
-make produce
-```
-
-All output will be in output dir
-
-to test your own card, go to file make_card_test.go
-
-then
+生成本地配置：
 
 ```bash
-make test
+go run . gen
 ```
 
-## if not
-
-Generate settings:
+只校验工作簿，不需要插画：
 
 ```bash
-sh gen.sh
+go run . validate
 ```
 
-config mass_producer_params_xlsx.json
-
-then
+生成卡图和 JSON：
 
 ```bash
-sh produce.sh
+go run .
 ```
 
-All output will be in output dir
-
-to test your own card, go to file make_card_test.go
-
-then
+只生成指定卡牌（适合预览；会覆盖这些卡号已有的测试输出）：
 
 ```bash
-sh test.sh
+go run . render BFH001 BFC001 BFS001 BAI001
 ```
 
-## or directly use go
+新版卡面暂用四种可替换的图形徽章：菱形表示法力费用、闪电表示发动法力、环形箭头表示冷却、四角星表示人物技能槽。徽章均带圆框、底色和数值；数值为零或空白时不显示。
 
-Generate settings:
+默认配置模板指向 `new_fork/奥术纪元_基础包卡牌设计_v0.2.xlsm` 和插画迁移表。请在本地配置中填写实际 `drawing_paths`。缺失插画会在数据导入和元数据写出后以明确清单报错，不会伪装成成功。
+
+输出包括：
+
+- `new_output/all_card_infos.json`
+- `new_output/simplified_card_infos.json`
+- 以新版字符串卡号命名的卡图
+
+## 测试
 
 ```bash
-go run github.com/Yifeeeeei/arcane_go gen
+go test ./...
 ```
 
-config mass_producer_params_xlsx.json
+测试覆盖新版整数、元素、表头扫描和完整工作簿的 134 张卡数量校验；若本地没有 `new_fork` 工作簿，集成测试会跳过。
 
-then
+## 牌组规则
 
-```bash
-go run github.com/Yifeeeeei/arcane_go
-```
+新版牌组为 1 张人物牌加 40 张主牌，技能混入主牌；普通牌至多 2 张，传奇牌至多 1 张。技能与其他主牌共用主牌牌背，人物牌使用独立牌背。
 
-All output will be in output dir
-
-to test your own card, go to file make_card_test.go
-
-then
-
-```bash
-go test
-```
-
+`DeckBuild.lua` 仍属于旧 Tabletop Simulator 场景脚本，目前不支持新版字符串卡号和新版牌组结构，不能用于验证新版牌组。
