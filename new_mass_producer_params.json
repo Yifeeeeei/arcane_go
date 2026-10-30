@@ -1,0 +1,13 @@
+{
+  "xlsx_paths": ["new_fork/奥术纪元_基础包卡牌设计_v0.2.xlsm"],
+  "drawing_paths": ["new_drawings"],
+  "version_names": ["基础包"],
+  "artwork_migration_path": "new_fork/arcane_artwork_migration.json",
+  "output_path": "new_output",
+  "size_ratio": 2,
+  "is_printing_version": false,
+  "overwrite": false,
+  "new_cards_only": false,
+  "general_path": "card_maker/resources/general",
+  "font_path": "card_maker/resources/fonts"
+}

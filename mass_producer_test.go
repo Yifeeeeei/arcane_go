@@ -40,6 +40,19 @@ func TestParseElementsNewOrderAndAliases(t *testing.T) {
 	}
 }
 
+func TestLegacySchemaStillParses(t *testing.T) {
+	if got := parseLegacyElements("2火 1无"); got["火"] != 2 || got["奥术"] != 1 {
+		t.Fatalf("legacy elements = %#v", got)
+	}
+	tests := map[string]string{"1111001": "伙伴", "2111001": "道具", "3111001": "技能", "4111001": "人物"}
+	for id, want := range tests {
+		got, err := legacyType(id)
+		if err != nil || got != want {
+			t.Errorf("legacyType(%s) = %q, %v; want %q", id, got, err, want)
+		}
+	}
+}
+
 func TestParseSheetFindsDescriptiveHeader(t *testing.T) {
 	rows := [][]string{{""}, {"标题"}, {"卡号", "卡名", "效果"}, {"BFC001", "测试", "原文"}}
 	parsed, err := parseSheet(rows)

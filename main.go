@@ -25,8 +25,11 @@ func main() {
 		return
 	}
 	paramPath := "mass_producer_params_xlsx.json"
+	if len(args) > 0 && args[0] == "new" {
+		paramPath = "new_mass_producer_params.json"
+	}
 	if len(args) > 0 && args[0] == "render" {
-		paramPath = "template_mass_producer_params_xlsx.json"
+		paramPath = "new_mass_producer_params.json"
 	}
 	if len(args) > 1 && args[0] == "validate" {
 		paramPath = args[1]
@@ -51,6 +54,16 @@ func main() {
 			panic(err)
 		}
 		fmt.Printf("rendered %d cards\n", len(args)-1)
+		return
+	}
+	if len(args) > 0 && args[0] == "render-old" {
+		if len(args) < 2 {
+			panic("usage: go run . render-old CARD_ID [CARD_ID ...]")
+		}
+		if err = m.ProduceIDs(args[1:]); err != nil {
+			panic(err)
+		}
+		fmt.Printf("rendered %d legacy cards\n", len(args)-1)
 		return
 	}
 	if err = m.Produce(); err != nil {

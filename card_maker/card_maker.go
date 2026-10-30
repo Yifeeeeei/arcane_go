@@ -1182,16 +1182,22 @@ func (cardMaker *CardMaker) drawNewSchemaStats(baseImage *image.RGBA, cardInfo *
 			return
 		}
 		width, height := float64(78*ratio), float64(50*ratio)
+		radius, outline := float64(25*ratio), float64(3*ratio)
+		if kind == "mana" {
+			height = float64(cardMaker.Config.NameRectHeight)
+			radius = float64(cardMaker.Config.NameRectRadius)
+			outline = float64(cardMaker.Config.NameRectOutlineWidth)
+		}
 		dc := gg.NewContextForRGBA(baseImage)
 		dc.SetColor(cardMaker.getRectFillColor(cardInfo))
-		dc.DrawRoundedRectangle(float64(left), float64(top), width, height, height/2)
+		dc.DrawRoundedRectangle(float64(left), float64(top), width, height, radius)
 		dc.FillPreserve()
-		dc.SetLineWidth(float64(3 * ratio))
+		dc.SetLineWidth(outline)
 		dc.SetColor(color.Black)
 		dc.Stroke()
-		cx, cy, radius := float64(left+25*ratio), float64(top+25*ratio), float64(14*ratio)
+		cx, cy, iconRadius := float64(left+25*ratio), float64(top)+height/2, float64(14*ratio)
 		dc.SetColor(color.RGBA{255, 255, 255, 255})
-		dc.DrawCircle(cx, cy, radius)
+		dc.DrawCircle(cx, cy, iconRadius)
 		dc.FillPreserve()
 		dc.SetLineWidth(float64(2 * ratio))
 		dc.SetColor(color.Black)
@@ -1200,44 +1206,44 @@ func (cardMaker *CardMaker) drawNewSchemaStats(baseImage *image.RGBA, cardInfo *
 		dc.SetColor(color.Black)
 		switch kind {
 		case "mana":
-			dc.MoveTo(cx, cy-radius*.65)
-			dc.LineTo(cx+radius*.55, cy)
-			dc.LineTo(cx, cy+radius*.65)
-			dc.LineTo(cx-radius*.55, cy)
+			dc.MoveTo(cx, cy-iconRadius*.65)
+			dc.LineTo(cx+iconRadius*.55, cy)
+			dc.LineTo(cx, cy+iconRadius*.65)
+			dc.LineTo(cx-iconRadius*.55, cy)
 			dc.ClosePath()
 			dc.Stroke()
 		case "activation":
-			dc.MoveTo(cx+radius*.15, cy-radius*.75)
-			dc.LineTo(cx-radius*.45, cy+radius*.05)
-			dc.LineTo(cx, cy+radius*.05)
-			dc.LineTo(cx-radius*.15, cy+radius*.75)
-			dc.LineTo(cx+radius*.5, cy-radius*.1)
-			dc.LineTo(cx+radius*.05, cy-radius*.1)
+			dc.MoveTo(cx+iconRadius*.15, cy-iconRadius*.75)
+			dc.LineTo(cx-iconRadius*.45, cy+iconRadius*.05)
+			dc.LineTo(cx, cy+iconRadius*.05)
+			dc.LineTo(cx-iconRadius*.15, cy+iconRadius*.75)
+			dc.LineTo(cx+iconRadius*.5, cy-iconRadius*.1)
+			dc.LineTo(cx+iconRadius*.05, cy-iconRadius*.1)
 			dc.ClosePath()
 			dc.Fill()
 		case "cooldown":
-			dc.DrawArc(cx, cy, radius*.58, -2.7, 2.1)
+			dc.DrawArc(cx, cy, iconRadius*.58, -2.7, 2.1)
 			dc.Stroke()
-			dc.MoveTo(cx+radius*.55, cy-radius*.3)
-			dc.LineTo(cx+radius*.7, cy+radius*.2)
-			dc.LineTo(cx+radius*.2, cy)
+			dc.MoveTo(cx+iconRadius*.55, cy-iconRadius*.3)
+			dc.LineTo(cx+iconRadius*.7, cy+iconRadius*.2)
+			dc.LineTo(cx+iconRadius*.2, cy)
 			dc.ClosePath()
 			dc.Fill()
 		case "slots":
-			dc.MoveTo(cx, cy-radius*.72)
-			dc.LineTo(cx+radius*.22, cy-radius*.22)
-			dc.LineTo(cx+radius*.72, cy)
-			dc.LineTo(cx+radius*.22, cy+radius*.22)
-			dc.LineTo(cx, cy+radius*.72)
-			dc.LineTo(cx-radius*.22, cy+radius*.22)
-			dc.LineTo(cx-radius*.72, cy)
-			dc.LineTo(cx-radius*.22, cy-radius*.22)
+			dc.MoveTo(cx, cy-iconRadius*.72)
+			dc.LineTo(cx+iconRadius*.22, cy-iconRadius*.22)
+			dc.LineTo(cx+iconRadius*.72, cy)
+			dc.LineTo(cx+iconRadius*.22, cy+iconRadius*.22)
+			dc.LineTo(cx, cy+iconRadius*.72)
+			dc.LineTo(cx-iconRadius*.22, cy+iconRadius*.22)
+			dc.LineTo(cx-iconRadius*.72, cy)
+			dc.LineTo(cx-iconRadius*.22, cy-iconRadius*.22)
 			dc.ClosePath()
 			dc.Fill()
 		}
 		valueText := strconv.Itoa(*value)
 		textLeft := left + 52*ratio - cardMaker.getStringWidth(valueText, font, float64(cardMaker.Config.LifeFontSize))/2
-		textTop := top + (50*ratio-cardMaker.getStringHeight(font, float64(cardMaker.Config.LifeFontSize)))/2 - cardMaker.Config.LifeFontCompensation
+		textTop := top + (int(height)-cardMaker.getStringHeight(font, float64(cardMaker.Config.LifeFontSize)))/2 - cardMaker.Config.LifeFontCompensation
 		baseImage = cardMaker.addTextToImage(baseImage, valueText, textLeft, textTop, font, float64(cardMaker.Config.LifeFontSize), cardMaker.Config.LifeFontColor)
 	}
 	right := cardMaker.Config.CardWidth - 88*ratio
@@ -1336,6 +1342,12 @@ func (cardMaker *CardMaker) makeAbilityCard(cardInfo *CardInfo) (*image.RGBA, er
 	if err != nil {
 		return nil, err
 	}
+	if cardInfo.Legacy {
+		baseImage, err = cardMaker.drawPowerOrDuration(baseImage, cardInfo)
+		if err != nil {
+			return nil, err
+		}
+	}
 	baseImage, err = cardMaker.drawNumber(baseImage, cardInfo)
 	if err != nil {
 		return nil, err
@@ -1383,6 +1395,12 @@ func (cardMaker *CardMaker) makeItemCard(cardInfo *CardInfo) (*image.RGBA, error
 	baseImage, err = cardMaker.drawGain(baseImage, cardInfo)
 	if err != nil {
 		return nil, err
+	}
+	if cardInfo.Legacy {
+		baseImage, err = cardMaker.drawPowerOrDuration(baseImage, cardInfo)
+		if err != nil {
+			return nil, err
+		}
 	}
 	baseImage, err = cardMaker.drawNumber(baseImage, cardInfo)
 	if err != nil {

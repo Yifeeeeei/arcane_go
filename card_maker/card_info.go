@@ -43,6 +43,7 @@ type CardInfo struct {
 	Spawns          []string `json:"-"`
 	VersionNumber   string   `json:"-"`
 	VersionName     string   `json:"-"`
+	Legacy          bool     `json:"-"`
 }
 
 func (cardInfo CardInfo) Equals(other CardInfo) bool { return reflect.DeepEqual(cardInfo, other) }

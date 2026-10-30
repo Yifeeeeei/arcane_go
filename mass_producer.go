@@ -121,14 +121,31 @@ func parseElements(raw string) (card_maker.Elements, error) {
 	return result, nil
 }
 
+func parseLegacyElements(raw string) card_maker.Elements {
+	result := card_maker.Elements{}
+	re := regexp.MustCompile(`([0-9]+)\s*([\p{Han}]+)`)
+	for _, match := range re.FindAllStringSubmatch(strings.TrimSpace(raw), -1) {
+		value, err := strconv.Atoi(match[1])
+		if err != nil {
+			continue
+		}
+		element, ok := elementAliases[match[2]]
+		if !ok {
+			continue
+		}
+		result[element] += value
+	}
+	return result
+}
+
 func parseSheet(rows [][]string) ([]Row, error) {
 	headerAt := -1
 	for i, row := range rows {
 		var hasID, hasName bool
 		for _, c := range row {
 			c = strings.TrimSpace(c)
-			hasID = hasID || c == "卡号"
-			hasName = hasName || c == "卡名"
+			hasID = hasID || c == "卡号" || c == "编号"
+			hasName = hasName || c == "卡名" || c == "名称"
 		}
 		if hasID && hasName {
 			headerAt = i
@@ -239,6 +256,46 @@ func (m *MassProducer) cardFromRow(row Row, sheet, setName string) (card_maker.C
 	return ci, nil
 }
 
+func legacyType(id string) (string, error) {
+	if len(id) != 7 {
+		return "", fmt.Errorf("legacy card id must have 7 digits, got %q", id)
+	}
+	switch id[0] {
+	case '1':
+		return card_maker.TYPE_UNIT_ZH, nil
+	case '2':
+		return card_maker.TYPE_ITEM_ZH, nil
+	case '3':
+		return card_maker.TYPE_ABILITY_ZH, nil
+	case '4':
+		return card_maker.TYPE_HERO_ZH, nil
+	default:
+		return "", fmt.Errorf("unknown legacy card type in %q", id)
+	}
+}
+
+func legacyInt(raw string) int {
+	value, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil {
+		return -1
+	}
+	return value
+}
+
+func (m *MassProducer) legacyCardFromRow(row Row, setName string) (card_maker.CardInfo, error) {
+	id := strings.TrimSpace(row["编号"])
+	cardType, err := legacyType(id)
+	if err != nil {
+		return card_maker.CardInfo{}, err
+	}
+	ci := card_maker.CardInfo{Number: id, Type: cardType, Name: row["名称"], Category: row["属性"], Tag: row["种类"], Description: row["效果"], Quote: row["引言"], ElementsCost: parseLegacyElements(row["条件"]), ElementsGain: parseLegacyElements(row["负载"]), ElementsExpense: parseLegacyElements(row["代价"]), Attack: legacyInt(row["攻击"]), Life: legacyInt(row["生命"]), Power: legacyInt(row["威力"]), Duration: legacyInt(row["时间"]), VersionName: setName, Legacy: true}
+	if row["标签"] != "" {
+		ci.Tag = row["标签"]
+	}
+	ci.OutputPath = filepath.ToSlash(filepath.Join(m.Params.OutputPath, setName, ci.Type, ci.Category, ci.Number+".jpg"))
+	return ci, nil
+}
+
 func (m *MassProducer) LoadCards() error {
 	var cards []card_maker.CardInfo
 	seen := map[string]bool{}
@@ -262,7 +319,15 @@ func (m *MassProducer) LoadCards() error {
 				continue
 			}
 			for _, row := range parsed {
-				ci, err := m.cardFromRow(row, sheet, setName)
+				if strings.TrimSpace(row["卡号"]) == "" && strings.TrimSpace(row["编号"]) == "" {
+					continue
+				}
+				var ci card_maker.CardInfo
+				if strings.TrimSpace(row["卡号"]) != "" {
+					ci, err = m.cardFromRow(row, sheet, setName)
+				} else {
+					ci, err = m.legacyCardFromRow(row, setName)
+				}
 				if err != nil {
 					book.Close()
 					return err
@@ -285,6 +350,9 @@ func (m *MassProducer) LoadCards() error {
 func (m *MassProducer) Validate() error {
 	if err := m.LoadCards(); err != nil {
 		return err
+	}
+	if len(m.AllCardInfos) > 0 && m.AllCardInfos[0].Legacy {
+		return nil
 	}
 	counts := map[string]int{}
 	for _, c := range m.AllCardInfos {
