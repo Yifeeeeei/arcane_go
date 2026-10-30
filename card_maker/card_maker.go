@@ -1201,7 +1201,12 @@ func (cardMaker *CardMaker) drawNewSchemaStats(baseImage *image.RGBA, cardInfo *
 		dc.SetLineWidth(outline)
 		dc.SetColor(color.Black)
 		dc.Stroke()
-		cx, cy, iconRadius := float64(left+25*ratio), float64(top)+height/2, float64(14*ratio)
+		iconCenterOffset, iconRadius := float64(25*ratio), float64(14*ratio)
+		if kind == "mana" {
+			iconCenterOffset = float64(23 * ratio)
+			iconRadius = float64(18 * ratio)
+		}
+		cx, cy := float64(left)+iconCenterOffset, float64(top)+height/2
 		dc.SetColor(color.RGBA{255, 255, 255, 255})
 		dc.DrawCircle(cx, cy, iconRadius)
 		dc.FillPreserve()
