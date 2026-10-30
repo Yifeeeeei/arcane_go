@@ -1178,15 +1178,21 @@ func (cardMaker *CardMaker) drawNewSchemaStats(baseImage *image.RGBA, cardInfo *
 	}
 	ratio := cardMaker.Config.CardWidth / 590
 	draw := func(kind string, value *int, left, top int) {
-		if value == nil || *value <= 0 {
+		if !shouldDrawNewSchemaStat(kind, value, cardInfo) {
 			return
+		}
+		valueNumber := 0
+		if value != nil {
+			valueNumber = *value
 		}
 		width, height := float64(78*ratio), float64(50*ratio)
 		radius, outline := float64(25*ratio), float64(3*ratio)
+		fontSize := float64(cardMaker.Config.LifeFontSize)
 		if kind == "mana" {
 			height = float64(cardMaker.Config.NameRectHeight)
 			radius = float64(cardMaker.Config.NameRectRadius)
 			outline = float64(cardMaker.Config.NameRectOutlineWidth)
+			fontSize = float64(40 * ratio)
 		}
 		dc := gg.NewContextForRGBA(baseImage)
 		dc.SetColor(cardMaker.getRectFillColor(cardInfo))
@@ -1222,13 +1228,20 @@ func (cardMaker *CardMaker) drawNewSchemaStats(baseImage *image.RGBA, cardInfo *
 			dc.ClosePath()
 			dc.Fill()
 		case "cooldown":
-			dc.DrawArc(cx, cy, iconRadius*.58, -2.7, 2.1)
-			dc.Stroke()
-			dc.MoveTo(cx+iconRadius*.55, cy-iconRadius*.3)
-			dc.LineTo(cx+iconRadius*.7, cy+iconRadius*.2)
-			dc.LineTo(cx+iconRadius*.2, cy)
+			// Hourglass: the narrow waist makes cooldown distinct from mana
+			// and activation even at card-preview size.
+			dc.MoveTo(cx-iconRadius*.55, cy-iconRadius*.65)
+			dc.LineTo(cx+iconRadius*.55, cy-iconRadius*.65)
+			dc.LineTo(cx+iconRadius*.55, cy-iconRadius*.48)
+			dc.LineTo(cx+iconRadius*.12, cy)
+			dc.LineTo(cx+iconRadius*.55, cy+iconRadius*.48)
+			dc.LineTo(cx+iconRadius*.55, cy+iconRadius*.65)
+			dc.LineTo(cx-iconRadius*.55, cy+iconRadius*.65)
+			dc.LineTo(cx-iconRadius*.55, cy+iconRadius*.48)
+			dc.LineTo(cx-iconRadius*.12, cy)
+			dc.LineTo(cx-iconRadius*.55, cy-iconRadius*.48)
 			dc.ClosePath()
-			dc.Fill()
+			dc.Stroke()
 		case "slots":
 			dc.MoveTo(cx, cy-iconRadius*.72)
 			dc.LineTo(cx+iconRadius*.22, cy-iconRadius*.22)
@@ -1241,10 +1254,10 @@ func (cardMaker *CardMaker) drawNewSchemaStats(baseImage *image.RGBA, cardInfo *
 			dc.ClosePath()
 			dc.Fill()
 		}
-		valueText := strconv.Itoa(*value)
-		textLeft := left + 52*ratio - cardMaker.getStringWidth(valueText, font, float64(cardMaker.Config.LifeFontSize))/2
-		textTop := top + (int(height)-cardMaker.getStringHeight(font, float64(cardMaker.Config.LifeFontSize)))/2 - cardMaker.Config.LifeFontCompensation
-		baseImage = cardMaker.addTextToImage(baseImage, valueText, textLeft, textTop, font, float64(cardMaker.Config.LifeFontSize), cardMaker.Config.LifeFontColor)
+		valueText := strconv.Itoa(valueNumber)
+		textLeft := left + 52*ratio - cardMaker.getStringWidth(valueText, font, fontSize)/2
+		textTop := top + (int(height)-cardMaker.getStringHeight(font, fontSize))/2 - cardMaker.Config.LifeFontCompensation
+		baseImage = cardMaker.addTextToImage(baseImage, valueText, textLeft, textTop, font, fontSize, cardMaker.Config.LifeFontColor)
 	}
 	right := cardMaker.Config.CardWidth - 88*ratio
 	draw("mana", cardInfo.ManaCost, right, 10*ratio)
@@ -1260,6 +1273,13 @@ func (cardMaker *CardMaker) drawNewSchemaStats(baseImage *image.RGBA, cardInfo *
 	draw("cooldown", cardInfo.Cooldown, cooldownLeft, 800*ratio)
 	draw("slots", cardInfo.SkillSlots, right, 530*ratio)
 	return baseImage, nil
+}
+
+func shouldDrawNewSchemaStat(kind string, value *int, cardInfo *CardInfo) bool {
+	if kind == "activation" && cardInfo.Type == TYPE_ABILITY_ZH {
+		return true
+	}
+	return value != nil && *value > 0
 }
 func (cardMaker *CardMaker) makeUnitCard(cardInfo *CardInfo) (*image.RGBA, error) {
 	baseImage, err := cardMaker.prepareOutline(cardInfo)
