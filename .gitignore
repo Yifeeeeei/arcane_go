@@ -19,6 +19,7 @@
 !new_mass_producer_params.json
 
 !DeckBuild.lua
+!DeckBuildNew.lua
 !README.md
 !makefile
 
