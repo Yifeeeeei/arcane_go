@@ -65,7 +65,7 @@ func TestParseSheetFindsDescriptiveHeader(t *testing.T) {
 }
 
 func TestRedesignedWorkbook(t *testing.T) {
-	if _, err := os.Stat("new_fork/奥术纪元_基础包卡牌设计_v0.2.xlsm"); err != nil {
+	if _, err := os.Stat("sheets/重置版/奥术纪元_基础包卡牌设计_v0.2.xlsm"); err != nil {
 		t.Skip("local redesign workbook is not present")
 	}
 	m, err := NewMassProducer("new_mass_producer_params.json")
@@ -102,5 +102,34 @@ func TestRedesignedWorkbook(t *testing.T) {
 	bf003 := byID["BFS001"]
 	if bf003.Type != "技能" || bf003.Cooldown == nil || *bf003.Cooldown != 2 || bf003.ActivationMana == nil || *bf003.ActivationMana != 4 {
 		t.Errorf("unexpected BFS001: %s", bf003.String())
+	}
+}
+
+func TestMissingArtworkCanUseBlankDrawing(t *testing.T) {
+	if _, err := os.Stat("sheets/重置版/奥术纪元_基础包卡牌设计_v0.2.xlsm"); err != nil {
+		t.Skip("local redesign workbook is not present")
+	}
+	m, err := NewMassProducer("new_mass_producer_params.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.Params.DrawingPaths = []string{t.TempDir()}
+	m.Params.OutputPath = t.TempDir()
+	m.Params.UseBlankArtworkForMissing = true
+	if err = m.ProduceIDs([]string{"BAC002"}); err != nil {
+		t.Fatal(err)
+	}
+	var outputPath string
+	for _, card := range m.AllCardInfos {
+		if card.Number == "BAC002" {
+			outputPath = card.OutputPath
+			break
+		}
+	}
+	if outputPath == "" {
+		t.Fatal("BAC002 output path not found")
+	}
+	if _, err = os.Stat(outputPath); err != nil {
+		t.Fatalf("blank-artwork card was not generated at %s: %v", outputPath, err)
 	}
 }

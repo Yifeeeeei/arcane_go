@@ -217,6 +217,11 @@ func (cardMaker *CardMaker) getImageWithoutExtension(imagePref string) (*image.R
 }
 
 func (cardMaker *CardMaker) getDrawing(cardInfo *CardInfo) (*image.RGBA, error) {
+	if cardMaker.Config.UseBlankDrawing {
+		blank := image.NewRGBA(image.Rect(0, 0, cardMaker.Config.DrawingWidth, cardMaker.Config.DrawingHeight))
+		draw.Draw(blank, blank.Bounds(), &image.Uniform{C: color.RGBA{R: 235, G: 235, B: 235, A: 255}}, image.Point{}, draw.Src)
+		return blank, nil
+	}
 	if cardMaker.Config.StaticDrawing {
 		return cardMaker.getImageWithoutExtension(cardMaker.Config.StaticDrawingPath)
 	}

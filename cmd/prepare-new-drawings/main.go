@@ -18,7 +18,7 @@ type mappingCard struct {
 }
 
 func main() {
-	b, err := os.ReadFile("new_fork/arcane_artwork_migration.json")
+	b, err := os.ReadFile("sheets/重置版/arcane_artwork_migration.json")
 	must(err)
 	var document mappingDocument
 	must(json.Unmarshal(b, &document))

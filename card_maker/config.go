@@ -9,6 +9,7 @@ type Config struct {
 	// is this is enabled, card maker will only use the image pointed by the path as drawing
 	StaticDrawing     bool   `json:"static_drawing"`
 	StaticDrawingPath string `json:"static_drawing_path"`
+	UseBlankDrawing   bool   `json:"use_blank_drawing"`
 	// path
 	GeneralPath        string            `json:"general_path"`
 	DrawingPath        string            `json:"drawing_path"`
@@ -159,6 +160,7 @@ func (c *Config) Copy() *Config {
 	newConfig := &Config{
 		StaticDrawing:                   c.StaticDrawing,
 		StaticDrawingPath:               c.StaticDrawingPath,
+		UseBlankDrawing:                 c.UseBlankDrawing,
 		GeneralPath:                     c.GeneralPath,
 		DrawingPath:                     c.DrawingPath,
 		FontPath:                        c.FontPath,
@@ -293,6 +295,7 @@ func NewDefaultConfig(sizeRatio int, generalPath, drawingPath, fontPath string) 
 	return Config{
 		StaticDrawing:     false,
 		StaticDrawingPath: "",
+		UseBlankDrawing:   false,
 
 		GeneralPath: generalPath,
 		DrawingPath: drawingPath,

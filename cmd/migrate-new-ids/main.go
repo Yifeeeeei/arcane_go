@@ -11,8 +11,8 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-const workbookPath = "new_fork/奥术纪元_基础包卡牌设计_v0.2.xlsm"
-const migrationPath = "new_fork/arcane_artwork_migration.json"
+const workbookPath = "sheets/重置版/奥术纪元_基础包卡牌设计_v0.2.xlsm"
+const migrationPath = "sheets/重置版/arcane_artwork_migration.json"
 
 var elementCodes = map[string]string{"奥术": "A", "无": "A", "火": "F", "火焰": "F", "水": "W", "水纹": "W", "地": "E", "地脉": "E", "暗": "D", "暗影": "D", "光": "L", "光辉": "L", "气": "R", "大气": "R"}
 var typeCodes = map[string]string{"人物": "H", "伙伴": "C", "技能": "S", "道具": "I"}

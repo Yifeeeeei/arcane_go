@@ -16,3 +16,19 @@ func TestSkillUsageCostBadgeAlwaysDraws(t *testing.T) {
 		t.Fatal("non-skill zero activation value should remain hidden")
 	}
 }
+
+func TestBlankDrawingUsesConfiguredDrawingSize(t *testing.T) {
+	config := NewDefaultConfig(1, "", "", "")
+	config.UseBlankDrawing = true
+	maker := NewCardMaker(config)
+	drawing, err := maker.getDrawing(&CardInfo{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if drawing.Bounds().Dx() != config.DrawingWidth || drawing.Bounds().Dy() != config.DrawingHeight {
+		t.Fatalf("blank drawing size = %v, want %dx%d", drawing.Bounds(), config.DrawingWidth, config.DrawingHeight)
+	}
+	if got := drawing.RGBAAt(0, 0); got.R != 235 || got.G != 235 || got.B != 235 || got.A != 255 {
+		t.Fatalf("blank drawing color = %#v", got)
+	}
+}

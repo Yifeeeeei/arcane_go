@@ -10,9 +10,10 @@
 !mass_producer_test.go
 !/cmd
 !/cmd/**
-!/new_fork
-!/new_fork/arcane_artwork_migration.json
-!/new_fork/奥术纪元_基础包卡牌设计_v0.2.xlsm
+!/sheets
+!/sheets/重置版
+!/sheets/重置版/arcane_artwork_migration.json
+!/sheets/重置版/奥术纪元_基础包卡牌设计_v0.2.xlsm
 !mass_producer_params.go
 !mass_producer.go
 !template_mass_producer_params_xlsx.json

@@ -433,16 +433,24 @@ func (m *MassProducer) Produce() error {
 
 func (m *MassProducer) renderCards(cards []card_maker.CardInfo) error {
 	missing := []string{}
+	substituted := []string{}
 	for i := range cards {
 		ci := &cards[i]
 		art := m.findArtwork(*ci)
 		if art == "" {
-			missing = append(missing, ci.Number)
-			continue
+			if !m.Params.UseBlankArtworkForMissing {
+				missing = append(missing, ci.Number)
+				continue
+			}
+			substituted = append(substituted, ci.Number)
 		}
 		cfg := m.Config.Copy()
-		cfg.StaticDrawing = true
-		cfg.StaticDrawingPath = strings.TrimSuffix(art, filepath.Ext(art))
+		if art == "" {
+			cfg.UseBlankDrawing = true
+		} else {
+			cfg.StaticDrawing = true
+			cfg.StaticDrawingPath = strings.TrimSuffix(art, filepath.Ext(art))
+		}
 		maker := card_maker.NewCardMaker(*cfg)
 		renderCard := *ci
 		if category, ok := elementAliases[renderCard.Category]; ok {
@@ -464,6 +472,9 @@ func (m *MassProducer) renderCards(cards []card_maker.CardInfo) error {
 	}
 	if len(missing) > 0 {
 		return fmt.Errorf("missing artwork for %d cards: %s", len(missing), strings.Join(missing, ", "))
+	}
+	if len(substituted) > 0 {
+		fmt.Printf("used blank artwork for %d cards: %s\n", len(substituted), strings.Join(substituted, ", "))
 	}
 	return nil
 }
