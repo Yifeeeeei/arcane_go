@@ -1148,7 +1148,7 @@ func (cardMaker *CardMaker) drawExpense(baseImage *image.RGBA, cardInfo *CardInf
 }
 
 func (cardMaker *CardMaker) drawNumber(baseImage *image.RGBA, cardInfo *CardInfo) (*image.RGBA, error) {
-	font, err := cardMaker.loadFont(filepath.Join(cardMaker.Config.FontPath, cardMaker.Config.NumberFont))
+	font, err := cardMaker.loadFont(filepath.Join(cardMaker.Config.FontPath, cardMaker.Config.LifeFont))
 	if err != nil {
 		return baseImage, err
 	}
@@ -1177,13 +1177,13 @@ func (cardMaker *CardMaker) drawNewSchemaStats(baseImage *image.RGBA, cardInfo *
 		return baseImage, err
 	}
 	ratio := cardMaker.Config.CardWidth / 590
-	draw := func(kind string, value *int, left, top int, fill color.RGBA) {
+	draw := func(kind string, value *int, left, top int) {
 		if value == nil || *value <= 0 {
 			return
 		}
 		width, height := float64(78*ratio), float64(50*ratio)
 		dc := gg.NewContextForRGBA(baseImage)
-		dc.SetColor(fill)
+		dc.SetColor(cardMaker.getRectFillColor(cardInfo))
 		dc.DrawRoundedRectangle(float64(left), float64(top), width, height, height/2)
 		dc.FillPreserve()
 		dc.SetLineWidth(float64(3 * ratio))
@@ -1236,14 +1236,23 @@ func (cardMaker *CardMaker) drawNewSchemaStats(baseImage *image.RGBA, cardInfo *
 			dc.Fill()
 		}
 		valueText := strconv.Itoa(*value)
-		textLeft := left + 52*ratio - cardMaker.getStringWidth(valueText, font, float64(cardMaker.Config.NumberFontSize))/2
-		textTop := top + (50*ratio-cardMaker.getStringHeight(font, float64(cardMaker.Config.NumberFontSize)))/2
-		baseImage = cardMaker.addTextToImage(baseImage, valueText, textLeft, textTop, font, float64(cardMaker.Config.NumberFontSize), color.RGBA{0, 0, 0, 255})
+		textLeft := left + 52*ratio - cardMaker.getStringWidth(valueText, font, float64(cardMaker.Config.LifeFontSize))/2
+		textTop := top + (50*ratio-cardMaker.getStringHeight(font, float64(cardMaker.Config.LifeFontSize)))/2 - cardMaker.Config.LifeFontCompensation
+		baseImage = cardMaker.addTextToImage(baseImage, valueText, textLeft, textTop, font, float64(cardMaker.Config.LifeFontSize), cardMaker.Config.LifeFontColor)
 	}
-	draw("mana", cardInfo.ManaCost, cardMaker.Config.CardWidth-88*ratio, 530*ratio, color.RGBA{244, 210, 92, 255})
-	draw("activation", cardInfo.ActivationMana, cardMaker.Config.CardWidth-88*ratio, 82*ratio, color.RGBA{116, 190, 255, 255})
-	draw("cooldown", cardInfo.Cooldown, cardMaker.Config.CardWidth-178*ratio, 800*ratio, color.RGBA{174, 154, 225, 255})
-	draw("slots", cardInfo.SkillSlots, cardMaker.Config.CardWidth-88*ratio, 530*ratio, color.RGBA{127, 211, 166, 255})
+	right := cardMaker.Config.CardWidth - 88*ratio
+	draw("mana", cardInfo.ManaCost, right, 10*ratio)
+	activationTop := 530 * ratio
+	if cardInfo.Type == TYPE_HERO_ZH {
+		activationTop = 10 * ratio
+	}
+	draw("activation", cardInfo.ActivationMana, right, activationTop)
+	cooldownLeft := right
+	if cardInfo.ElementsGain.TotalCost() > 0 {
+		cooldownLeft -= 90 * ratio
+	}
+	draw("cooldown", cardInfo.Cooldown, cooldownLeft, 800*ratio)
+	draw("slots", cardInfo.SkillSlots, right, 530*ratio)
 	return baseImage, nil
 }
 func (cardMaker *CardMaker) makeUnitCard(cardInfo *CardInfo) (*image.RGBA, error) {
