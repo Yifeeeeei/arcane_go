@@ -68,7 +68,7 @@ func TestRedesignedWorkbook(t *testing.T) {
 	if _, err := os.Stat("new_fork/奥术纪元_基础包卡牌设计_v0.2.xlsm"); err != nil {
 		t.Skip("local redesign workbook is not present")
 	}
-	m, err := NewMassProducer("template_mass_producer_params_xlsx.json")
+	m, err := NewMassProducer("new_mass_producer_params.json")
 	if err != nil {
 		t.Fatal(err)
 	}
