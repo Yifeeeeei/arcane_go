@@ -154,6 +154,10 @@ type Config struct {
 	NumberFontColor      color.RGBA `json:"number_font_color"`
 	NumberTextToRight    int        `json:"number_text_to_right"`
 	NumberTextToBlockTop int        `json:"number_text_to_block_top"`
+	// new schema mana badge
+	ManaFontSize  int        `json:"mana_font_size"`
+	ManaFont      string     `json:"mana_font"`
+	ManaFontColor color.RGBA `json:"mana_font_color"`
 }
 
 func (c *Config) Copy() *Config {
@@ -285,6 +289,9 @@ func (c *Config) Copy() *Config {
 		NumberFontColor:                 c.NumberFontColor,
 		NumberTextToRight:               c.NumberTextToRight,
 		NumberTextToBlockTop:            c.NumberTextToBlockTop,
+		ManaFontSize:                    c.ManaFontSize,
+		ManaFont:                        c.ManaFont,
+		ManaFontColor:                   c.ManaFontColor,
 	}
 	return newConfig
 
@@ -344,6 +351,8 @@ func NewDefaultConfig(sizeRatio int, generalPath, drawingPath, fontPath string) 
 			"\\攻": filepath.Join(generalPath, "attack"),
 			"\\威": filepath.Join(generalPath, "power"),
 			"\\持": filepath.Join(generalPath, "duration"),
+			"\\法": filepath.Join(generalPath, "mana"),
+			"\\冷": filepath.Join(generalPath, "cooldown"),
 		},
 		CardWidth:               590 * sizeRatio,
 		CardHeight:              860 * sizeRatio,
@@ -463,5 +472,8 @@ func NewDefaultConfig(sizeRatio int, generalPath, drawingPath, fontPath string) 
 		NumberFontColor:                 color.RGBA{0, 0, 0, 255},
 		NumberTextToRight:               50 * sizeRatio,
 		NumberTextToBlockTop:            17 * sizeRatio,
+		ManaFontSize:                    38 * sizeRatio,
+		ManaFont:                        "EBGaramond-Regular.ttf",
+		ManaFontColor:                   color.RGBA{255, 255, 255, 255},
 	}
 }
