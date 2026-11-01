@@ -12,9 +12,9 @@ local SET_DIRECTORIES = {
 }
 
 local ELEMENT_DIRECTORIES = {
-    A = "%E5%A5%A5%E6%9C%AF", -- 奥术
-    F = "%E7%81%AB%E7%84%B0", -- 火焰
-    W = "%E6%B0%B4%E7%BA%B9"  -- 水纹
+    A = "%E6%97%A0", -- 无
+    F = "%E7%81%AB", -- 火
+    W = "%E6%B0%B4"  -- 水
 }
 
 local TYPE_DIRECTORIES = {
