@@ -21,7 +21,7 @@ import (
 // Heroes: B + A/F/W/... + H + 001.
 // Main cards: B + A/F/W/... + C/S/I + L/N/D + 001, where the fourth
 // character identifies legendary, normal, or derived cards.
-var newCardID = regexp.MustCompile(`^B[AFWEDLR](?:H[0-9]{3}|[CSI][LND][0-9]{3})$`)
+var newCardID = regexp.MustCompile(`^B[AFWGEDL](?:H[0-9]{3}|[CSI][LND][0-9]{3})$`)
 
 type Row map[string]string
 type artworkCard struct {
@@ -364,7 +364,9 @@ func (m *MassProducer) Validate() error {
 	for _, c := range m.AllCardInfos {
 		counts[c.Type]++
 	}
-	if len(m.AllCardInfos) != 134 || counts["人物"] != 14 || counts["伙伴"] != 48 || counts["技能"] != 28 || counts["道具"] != 44 {
+	threeElementBase := len(m.AllCardInfos) == 134 && counts["人物"] == 14 && counts["伙伴"] == 48 && counts["技能"] == 28 && counts["道具"] == 44
+	sevenElementBase := len(m.AllCardInfos) == 343 && counts["人物"] == 34 && counts["伙伴"] == 128 && counts["技能"] == 72 && counts["道具"] == 109
+	if !threeElementBase && !sevenElementBase {
 		return fmt.Errorf("unexpected card counts: total=%d types=%v", len(m.AllCardInfos), counts)
 	}
 	return nil

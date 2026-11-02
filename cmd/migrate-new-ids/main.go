@@ -12,10 +12,10 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-const workbookPath = "sheets/重置版/奥术纪元_基础包卡牌设计_v0.2.xlsm"
-const migrationPath = "sheets/重置版/arcane_artwork_migration.json"
+const defaultWorkbookPath = "sheets/重置版/奥术纪元_基础包卡牌设计_v0.2.xlsm"
+const defaultMigrationPath = "sheets/重置版/arcane_artwork_migration.json"
 
-var elementCodes = map[string]string{"奥术": "A", "无": "A", "火": "F", "火焰": "F", "水": "W", "水纹": "W", "地": "E", "地脉": "E", "暗": "D", "暗影": "D", "光": "L", "光辉": "L", "气": "R", "大气": "R"}
+var elementCodes = map[string]string{"奥术": "A", "无": "A", "火": "F", "火焰": "F", "水": "W", "水纹": "W", "气": "G", "大气": "G", "地": "E", "地脉": "E", "光": "L", "光辉": "L", "暗": "D", "暗影": "D"}
 var typeCodes = map[string]string{"人物": "H", "伙伴": "C", "技能": "S", "道具": "I"}
 var rarityCodes = map[string]string{"传奇": "L", "普通": "N", "衍生": "D"}
 var sequencePattern = regexp.MustCompile(`[0-9]{3}$`)
@@ -31,6 +31,27 @@ type cardUpdate struct {
 }
 
 func main() {
+	workbookPath, migrationPath, workbookOnly := defaultWorkbookPath, defaultMigrationPath, false
+	for index := 1; index < len(os.Args); index++ {
+		switch os.Args[index] {
+		case "--workbook":
+			index++
+			if index >= len(os.Args) {
+				panic("--workbook requires a path")
+			}
+			workbookPath = os.Args[index]
+		case "--migration":
+			index++
+			if index >= len(os.Args) {
+				panic("--migration requires a path")
+			}
+			migrationPath = os.Args[index]
+		case "--workbook-only":
+			workbookOnly = true
+		default:
+			panic("unknown argument: " + os.Args[index])
+		}
+	}
 	book, err := excelize.OpenFile(workbookPath)
 	must(err)
 	defer book.Close()
@@ -97,6 +118,12 @@ func main() {
 			axis, _ := excelize.CoordinatesToCellName(columns["卡号"]+1, rowIndex+1)
 			must(book.SetCellValue(sheet, axis, newID))
 		}
+	}
+
+	if workbookOnly {
+		must(book.Save())
+		fmt.Printf("migrated %d IDs in %s\n", len(idMap), workbookPath)
+		return
 	}
 
 	b, err := os.ReadFile(migrationPath)
