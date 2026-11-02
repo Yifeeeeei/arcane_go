@@ -41,12 +41,7 @@ func main() {
 	must(err)
 	newImages, err := indexImages("new_drawings")
 	must(err)
-	workbooks := map[string]*excelize.File{}
-	defer func() {
-		for _, book := range workbooks {
-			_ = book.Close()
-		}
-	}()
+	legacyNames := loadLegacyNames()
 
 	errors := []string{}
 	missingArtwork := []string{}
@@ -70,13 +65,9 @@ func main() {
 			}
 			continue
 		}
-		if card.LegacyWorkbook == nil || card.LegacySheet == nil || card.LegacyRow == nil {
-			errors = append(errors, card.NewID+" has incomplete legacy source metadata")
-			continue
-		}
-		legacyName, err := readLegacyName(workbooks, *card.LegacyWorkbook, *card.LegacySheet, *card.LegacyRow)
-		if err != nil {
-			errors = append(errors, fmt.Sprintf("%s legacy name: %v", card.NewID, err))
+		legacyName := legacyNames[*card.LegacyID]
+		if legacyName == "" {
+			errors = append(errors, fmt.Sprintf("%s legacy card %s is missing from output/all_card_infos.json", card.NewID, *card.LegacyID))
 			continue
 		}
 		if legacyName == currentName {
@@ -142,29 +133,37 @@ func normalizeName(name string) string {
 }
 
 func loadCurrentCards() (map[string]string, error) {
-	book, err := excelize.OpenFile(workbookPath)
+	b, err := os.ReadFile("new_output/all_card_infos.json")
 	if err != nil {
 		return nil, err
 	}
-	defer book.Close()
+	var records []struct {
+		Number string `json:"number"`
+		Name   string `json:"name"`
+	}
+	if err = json.Unmarshal(b, &records); err != nil {
+		return nil, err
+	}
 	cards := map[string]string{}
-	for _, sheet := range book.GetSheetList() {
-		rows, err := book.GetRows(sheet)
-		if err != nil {
-			return nil, err
-		}
-		header, columns := findHeader(rows)
-		if header < 0 {
-			continue
-		}
-		for _, row := range rows[header+1:] {
-			id := cell(row, columns["卡号"])
-			if id != "" {
-				cards[id] = cell(row, columns["卡名"])
-			}
-		}
+	for _, record := range records {
+		cards[record.Number] = record.Name
 	}
 	return cards, nil
+}
+
+func loadLegacyNames() map[string]string {
+	b, err := os.ReadFile("output/all_card_infos.json")
+	must(err)
+	var records []struct {
+		Number string `json:"number"`
+		Name   string `json:"name"`
+	}
+	must(json.Unmarshal(b, &records))
+	names := map[string]string{}
+	for _, record := range records {
+		names[record.Number] = record.Name
+	}
+	return names
 }
 
 func readLegacyName(cache map[string]*excelize.File, relativePath, sheet string, rowNumber int) (string, error) {

@@ -62,6 +62,14 @@ go run . render-old 4111001 1111001
 go run ./cmd/audit-new-artwork
 ```
 
+工作簿扩充卡池后，可先按当前新旧 JSON 的唯一同名卡重建迁移表，再复制原画并审计：
+
+```bash
+go run ./cmd/rebuild-artwork-migration
+go run ./cmd/prepare-new-drawings
+go run ./cmd/audit-new-artwork
+```
+
 为另一份新版工作簿补齐牌级编号、但不修改当前迁移表和 `new_drawings` 时，可运行：
 
 ```bash
