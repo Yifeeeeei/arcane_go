@@ -1,6 +1,6 @@
 -- Era of Arcane redesigned-card deck builder for Tabletop Simulator.
 -- Keep DeckBuild.lua for legacy numeric card IDs. This script accepts the
--- redesigned self-describing IDs, for example BFH001, BFC001, BFS001, BAI001.
+-- redesigned self-describing IDs, for example BFH001, BFCL001, BFSN002, BAIN002.
 
 local RESOURCE_URL = "https://yifeeeeei.github.io/ArcaneImages/"
 local NEW_OUTPUT_URL = RESOURCE_URL .. "new_output/"
@@ -14,7 +14,11 @@ local SET_DIRECTORIES = {
 local ELEMENT_DIRECTORIES = {
     A = "%E6%97%A0", -- 无
     F = "%E7%81%AB", -- 火
-    W = "%E6%B0%B4"  -- 水
+    W = "%E6%B0%B4", -- 水
+    R = "%E6%B0%94", -- 气
+    E = "%E5%9C%B0", -- 地
+    L = "%E5%85%89", -- 光
+    D = "%E6%9A%97"  -- 暗
 }
 
 local TYPE_DIRECTORIES = {
@@ -57,7 +61,7 @@ function setUpDeckBuilderInput()
         input_function = "onDeckCodeChanged",
         interactable = true,
         readOnly = false,
-        label = "输入新版牌组代码，如 BFH001 2xBFC001 // BFS001",
+        label = "输入新版牌组代码，如 BFH001 2xBFCN003 // BFSN002",
         font_size = 42
     })
 end
@@ -102,7 +106,14 @@ function normalizeCardId(value)
 end
 
 function isValidCardId(cardId)
-    if #cardId ~= 6 or not cardId:match("^[A-Z][A-Z][A-Z]%d%d%d$") then
+    local cardType = cardId:sub(3, 3)
+    local formatIsValid = false
+    if cardType == "H" then
+        formatIsValid = #cardId == 6 and cardId:match("^[A-Z][A-Z]H%d%d%d$") ~= nil
+    else
+        formatIsValid = #cardId == 7 and cardId:match("^[A-Z][A-Z][CSI][LND]%d%d%d$") ~= nil
+    end
+    if not formatIsValid then
         return false
     end
     return SET_DIRECTORIES[cardId:sub(1, 1)] ~= nil

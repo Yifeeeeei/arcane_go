@@ -18,9 +18,10 @@ import (
 	"golang.org/x/image/tiff"
 )
 
-// IDs encode set, element, type, and a three-digit sequence:
-// B + A/F/W/... + H/C/S/I + 001.
-var newCardID = regexp.MustCompile(`^B[AFWEDLR][HCSI][0-9]{3}$`)
+// Heroes: B + A/F/W/... + H + 001.
+// Main cards: B + A/F/W/... + C/S/I + L/N/D + 001, where the fourth
+// character identifies legendary, normal, or derived cards.
+var newCardID = regexp.MustCompile(`^B[AFWEDLR](?:H[0-9]{3}|[CSI][LND][0-9]{3})$`)
 
 type Row map[string]string
 type artworkCard struct {
@@ -90,6 +91,7 @@ func parseOptionalInt(raw, field string) (*int, error) {
 }
 
 var elementAliases = map[string]string{"火": "火", "火焰": "火", "水": "水", "水纹": "水", "气": "气", "大气": "气", "地": "地", "地脉": "地", "光": "光", "光辉": "光", "暗": "暗", "暗影": "暗", "奥术": "奥术", "无": "奥术"}
+var elementOutputDirectories = map[string]string{"火": "火", "火焰": "火", "水": "水", "水纹": "水", "气": "气", "大气": "气", "地": "地", "地脉": "地", "光": "光", "光辉": "光", "暗": "暗", "暗影": "暗", "奥术": "无", "无": "无"}
 
 func parseElements(raw string) (card_maker.Elements, error) {
 	result := card_maker.Elements{}
@@ -249,7 +251,11 @@ func (m *MassProducer) cardFromRow(row Row, sheet, setName string) (card_maker.C
 	ci.Power = -1
 	ci.Tag = ci.Subtype
 	ci.VersionName = ci.SetName
-	ci.OutputPath = filepath.ToSlash(filepath.Join(m.Params.OutputPath, ci.SetName, ci.Type, ci.Category, ci.Number+".jpg"))
+	outputElement := elementOutputDirectories[ci.Category]
+	if outputElement == "" {
+		outputElement = ci.Category
+	}
+	ci.OutputPath = filepath.ToSlash(filepath.Join(m.Params.OutputPath, ci.SetName, ci.Type, outputElement, ci.Number+".jpg"))
 	if a, ok := m.artwork[id]; ok && a.LegacyID != nil {
 		ci.ArtRef = *a.LegacyID
 	}

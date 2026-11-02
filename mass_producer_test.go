@@ -54,13 +54,26 @@ func TestLegacySchemaStillParses(t *testing.T) {
 }
 
 func TestParseSheetFindsDescriptiveHeader(t *testing.T) {
-	rows := [][]string{{""}, {"标题"}, {"卡号", "卡名", "效果"}, {"BFC001", "测试", "原文"}}
+	rows := [][]string{{""}, {"标题"}, {"卡号", "卡名", "效果"}, {"BFCN001", "测试", "原文"}}
 	parsed, err := parseSheet(rows)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(parsed) != 1 || parsed[0]["卡号"] != "BFC001" {
+	if len(parsed) != 1 || parsed[0]["卡号"] != "BFCN001" {
 		t.Fatalf("unexpected rows: %#v", parsed)
+	}
+}
+
+func TestNewCardIDEncodesMainCardRarity(t *testing.T) {
+	for _, id := range []string{"BFH001", "BFCL001", "BFCN003", "BFCD001", "BASL001", "BWIN014"} {
+		if !newCardID.MatchString(id) {
+			t.Errorf("valid redesigned ID rejected: %s", id)
+		}
+	}
+	for _, id := range []string{"BFC001", "BFCH001", "BFCX001", "BFHＮ001"} {
+		if newCardID.MatchString(id) {
+			t.Errorf("invalid redesigned ID accepted: %s", id)
+		}
 	}
 }
 
@@ -83,7 +96,7 @@ func TestRedesignedWorkbook(t *testing.T) {
 			quotes++
 		}
 	}
-	for _, id := range []string{"BFH001", "BAI001", "BFS001", "BFC001", "BWI001"} {
+	for _, id := range []string{"BFH001", "BAIL001", "BFSL001", "BFCL001", "BWIL001"} {
 		if _, ok := byID[id]; !ok {
 			t.Errorf("missing %s", id)
 		}
@@ -92,16 +105,19 @@ func TestRedesignedWorkbook(t *testing.T) {
 		t.Errorf("nonempty quotes = %d, want 37", quotes)
 	}
 	bh001 := byID["BFH001"]
-	if bh001.AttackValue == nil || *bh001.AttackValue != 0 || bh001.LifeValue == nil || *bh001.LifeValue != 20 || bh001.SkillSlots == nil || *bh001.SkillSlots != 3 || bh001.ActivationMana != nil {
+	if bh001.AttackValue == nil || *bh001.AttackValue != 0 || bh001.LifeValue == nil || *bh001.LifeValue != 15 || bh001.SkillSlots == nil || *bh001.SkillSlots != 3 || bh001.ActivationMana != nil {
 		t.Errorf("unexpected BFH001: %s", bh001.String())
 	}
 	bh002 := byID["BFH002"]
 	if bh002.ActivationMana == nil || *bh002.ActivationMana != 0 {
 		t.Errorf("BFH002 explicit zero was lost: %s", bh002.String())
 	}
-	bf003 := byID["BFS001"]
+	bf003 := byID["BFSL001"]
 	if bf003.Type != "技能" || bf003.Cooldown == nil || *bf003.Cooldown != 2 || bf003.ActivationMana == nil || *bf003.ActivationMana != 4 {
-		t.Errorf("unexpected BFS001: %s", bf003.String())
+		t.Errorf("unexpected BFSL001: %s", bf003.String())
+	}
+	if got := byID["BACL001"].OutputPath; got != "new_output/基础包/伙伴/无/BACL001.jpg" {
+		t.Errorf("short element output path = %q", got)
 	}
 }
 
@@ -116,18 +132,18 @@ func TestMissingArtworkCanUseBlankDrawing(t *testing.T) {
 	m.Params.DrawingPaths = []string{t.TempDir()}
 	m.Params.OutputPath = t.TempDir()
 	m.Params.UseBlankArtworkForMissing = true
-	if err = m.ProduceIDs([]string{"BAC002"}); err != nil {
+	if err = m.ProduceIDs([]string{"BACN002"}); err != nil {
 		t.Fatal(err)
 	}
 	var outputPath string
 	for _, card := range m.AllCardInfos {
-		if card.Number == "BAC002" {
+		if card.Number == "BACN002" {
 			outputPath = card.OutputPath
 			break
 		}
 	}
 	if outputPath == "" {
-		t.Fatal("BAC002 output path not found")
+		t.Fatal("BACN002 output path not found")
 	}
 	if _, err = os.Stat(outputPath); err != nil {
 		t.Fatalf("blank-artwork card was not generated at %s: %v", outputPath, err)
