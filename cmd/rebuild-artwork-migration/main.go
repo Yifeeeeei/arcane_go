@@ -32,9 +32,13 @@ func main() {
 	legacy := readCards("output/all_card_infos.json")
 	legacyImages := indexImages("drawings")
 	legacyByName := map[string][]cardInfo{}
+	legacyByNormalizedName := map[string][]cardInfo{}
+	legacyByID := map[string]cardInfo{}
 	for _, card := range legacy {
 		if legacyImages[card.Number] != "" {
 			legacyByName[card.Name] = append(legacyByName[card.Name], card)
+			legacyByNormalizedName[normalizeName(card.Name)] = append(legacyByNormalizedName[normalizeName(card.Name)], card)
+			legacyByID[card.Number] = card
 		}
 	}
 
@@ -47,9 +51,13 @@ func main() {
 		panic("migration cards array missing")
 	}
 	existingByID := map[string]map[string]any{}
+	existingByName := map[string]map[string]any{}
 	for _, raw := range existingCards {
 		card := raw.(map[string]any)
 		existingByID[card["new_id"].(string)] = card
+		if name, ok := card["name"].(string); ok && name != "" {
+			existingByName[name] = card
+		}
 	}
 
 	sort.Slice(current, func(i, j int) bool { return current[i].Number < current[j].Number })
@@ -57,15 +65,23 @@ func main() {
 	matched, missing := 0, 0
 	for _, card := range current {
 		record := existingByID[card.Number]
+		if record == nil || record["name"] != card.Name {
+			record = existingByName[card.Name]
+		}
 		if record == nil {
 			record = map[string]any{}
 		}
 		legacyID, hasLegacy := record["legacy_id"].(string)
-		recordName, _ := record["name"].(string)
 		nameMatchConfirmed, _ := record["name_match_confirmed"].(bool)
-		preserveLegacy := hasLegacy && legacyID != "" && (recordName == card.Name || nameMatchConfirmed)
+		legacyCard, legacyExists := legacyByID[legacyID]
+		preserveLegacy := hasLegacy && legacyID != "" && legacyExists && (legacyCard.Name == card.Name || nameMatchConfirmed)
 		if !preserveLegacy {
 			candidates := legacyByName[card.Name]
+			status := "legacy_name_match"
+			if len(candidates) == 0 {
+				candidates = legacyByNormalizedName[normalizeName(card.Name)]
+				status = "legacy_normalized_name_match"
+			}
 			switch len(candidates) {
 			case 0:
 				record["legacy_id"] = nil
@@ -82,7 +98,7 @@ func main() {
 				record["legacy_set"] = candidate.VersionName
 				record["legacy_sheet"] = nil
 				record["legacy_workbook"] = nil
-				record["status"] = "legacy_name_match"
+				record["status"] = status
 				matched++
 			default:
 				ids := make([]string, 0, len(candidates))
@@ -111,6 +127,11 @@ func main() {
 	must(os.WriteFile(temporary, b, 0644))
 	must(os.Rename(temporary, migrationPath))
 	fmt.Printf("rebuilt %d mappings: %d legacy drawings, %d without legacy art\n", len(rebuilt), matched, missing)
+}
+
+func normalizeName(name string) string {
+	name = strings.NewReplacer(" ", "", "·", "", "“", "", "”", "", string(rune(34)), "").Replace(name)
+	return strings.TrimSuffix(name, "卷轴")
 }
 
 func updateSources(document map[string]any) {

@@ -64,6 +64,19 @@ func TestParseSheetFindsDescriptiveHeader(t *testing.T) {
 	}
 }
 
+func TestLegalCardIDsGateRows(t *testing.T) {
+	for _, id := range []string{"BFCN001", "BFSD001", "4111001"} {
+		if !newCardID.MatchString(id) && !legacyCardID.MatchString(id) {
+			t.Errorf("legal card ID %q was rejected", id)
+		}
+	}
+	for _, value := range []string{"伙伴牌", "说明", "BWIN", "123"} {
+		if newCardID.MatchString(value) || legacyCardID.MatchString(value) {
+			t.Errorf("non-card row %q passed the card ID gate", value)
+		}
+	}
+}
+
 func TestNewCardIDEncodesMainCardRarity(t *testing.T) {
 	for _, id := range []string{"BFH001", "BGH001", "BFCL001", "BGCN001", "BFCN003", "BFCD001", "BASL001", "BWIN014"} {
 		if !newCardID.MatchString(id) {

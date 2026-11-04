@@ -22,6 +22,7 @@ import (
 // Main cards: B + A/F/W/... + C/S/I + L/N/D + 001, where the fourth
 // character identifies legendary, normal, or derived cards.
 var newCardID = regexp.MustCompile(`^B[AFWGEDL](?:H[0-9]{3}|[CSI][LND][0-9]{3})$`)
+var legacyCardID = regexp.MustCompile(`^[0-9]{7}$`)
 
 type Row map[string]string
 type artworkCard struct {
@@ -325,14 +326,15 @@ func (m *MassProducer) LoadCards() error {
 				continue
 			}
 			for _, row := range parsed {
-				if strings.TrimSpace(row["卡号"]) == "" && strings.TrimSpace(row["编号"]) == "" {
-					continue
-				}
+				newID := strings.TrimSpace(row["卡号"])
+				legacyID := strings.TrimSpace(row["编号"])
 				var ci card_maker.CardInfo
-				if strings.TrimSpace(row["卡号"]) != "" {
+				if newCardID.MatchString(newID) {
 					ci, err = m.cardFromRow(row, sheet, setName)
-				} else {
+				} else if legacyCardID.MatchString(legacyID) {
 					ci, err = m.legacyCardFromRow(row, setName)
+				} else {
+					continue
 				}
 				if err != nil {
 					book.Close()
@@ -365,9 +367,21 @@ func (m *MassProducer) Validate() error {
 		counts[c.Type]++
 	}
 	threeElementBase := len(m.AllCardInfos) == 134 && counts["人物"] == 14 && counts["伙伴"] == 48 && counts["技能"] == 28 && counts["道具"] == 44
-	sevenElementBase := len(m.AllCardInfos) == 343 && counts["人物"] == 34 && counts["伙伴"] == 128 && counts["技能"] == 72 && counts["道具"] == 109
+	sevenElementBase := len(m.AllCardInfos) == 343 && counts["人物"] == 34 && counts["伙伴"] == 129 && counts["技能"] == 72 && counts["道具"] == 108
 	if !threeElementBase && !sevenElementBase {
-		return fmt.Errorf("unexpected card counts: total=%d types=%v", len(m.AllCardInfos), counts)
+		byName := map[string][]string{}
+		for _, card := range m.AllCardInfos {
+			byName[card.Name] = append(byName[card.Name], card.Number)
+		}
+		duplicates := []string{}
+		for name, ids := range byName {
+			if name != "" && len(ids) > 1 {
+				sort.Strings(ids)
+				duplicates = append(duplicates, fmt.Sprintf("%s=%s", name, strings.Join(ids, ",")))
+			}
+		}
+		sort.Strings(duplicates)
+		return fmt.Errorf("unexpected card counts: total=%d types=%v duplicate_names=%v", len(m.AllCardInfos), counts, duplicates)
 	}
 	return nil
 }
@@ -433,10 +447,51 @@ func (m *MassProducer) Produce() error {
 	if err := m.LoadCards(); err != nil {
 		return err
 	}
+	if err := m.pruneStaleOutputImages(); err != nil {
+		return err
+	}
 	if err := m.renderCards(m.AllCardInfos); err != nil {
 		return err
 	}
 	return m.writeMetadata()
+}
+
+func (m *MassProducer) pruneStaleOutputImages() error {
+	root := filepath.Clean(m.Params.OutputPath)
+	if root == "." || root == string(filepath.Separator) || filepath.VolumeName(root)+string(filepath.Separator) == root {
+		return fmt.Errorf("refusing to clean unsafe output path %q", m.Params.OutputPath)
+	}
+	desired := map[string]bool{}
+	for _, card := range m.AllCardInfos {
+		desired[filepath.Clean(filepath.FromSlash(card.OutputPath))] = true
+	}
+	removed := 0
+	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			if os.IsNotExist(err) {
+				return nil
+			}
+			return err
+		}
+		if entry.IsDir() || desired[filepath.Clean(path)] {
+			return nil
+		}
+		switch strings.ToLower(filepath.Ext(path)) {
+		case ".png", ".jpg", ".jpeg", ".webp", ".tiff", ".jfif":
+			if err = os.Remove(path); err != nil {
+				return err
+			}
+			removed++
+		}
+		return nil
+	})
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	if removed > 0 {
+		fmt.Printf("removed %d stale output images\n", removed)
+	}
+	return nil
 }
 
 func (m *MassProducer) renderCards(cards []card_maker.CardInfo) error {

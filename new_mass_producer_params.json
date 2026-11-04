@@ -1,5 +1,5 @@
 {
-  "xlsx_paths": ["sheets/重置版/奥术纪元_基础包卡牌设计_七系补全.xlsm"],
+  "xlsx_paths": ["sheets/重置版/奥术纪元_基础包卡牌设计_七系补全_整理版.xlsx"],
   "drawing_paths": ["new_drawings"],
   "version_names": ["基础包"],
   "artwork_migration_path": "sheets/重置版/arcane_artwork_migration.json",

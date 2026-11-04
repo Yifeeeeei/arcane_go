@@ -35,6 +35,28 @@ func main() {
 		return nil
 	}))
 	must(os.MkdirAll("new_drawings", 0755))
+	desired := map[string]bool{}
+	for _, card := range document.Cards {
+		if card.LegacyID == nil {
+			continue
+		}
+		if source := assets[*card.LegacyID]; source != "" {
+			desired[card.NewID+strings.ToLower(filepath.Ext(source))] = true
+		}
+	}
+	removed := 0
+	entries, err := os.ReadDir("new_drawings")
+	must(err)
+	for _, entry := range entries {
+		if entry.IsDir() || desired[entry.Name()] {
+			continue
+		}
+		switch strings.ToLower(filepath.Ext(entry.Name())) {
+		case ".png", ".jpg", ".jpeg", ".webp", ".tiff", ".jfif":
+			must(os.Remove(filepath.Join("new_drawings", entry.Name())))
+			removed++
+		}
+	}
 	copied, missing := 0, []string{}
 	for _, card := range document.Cards {
 		if card.LegacyID == nil {
@@ -50,7 +72,7 @@ func main() {
 		must(copyFile(source, destination))
 		copied++
 	}
-	fmt.Printf("copied %d drawings to new_drawings; %d unavailable\n", copied, len(missing))
+	fmt.Printf("synced %d drawings to new_drawings; removed %d stale names; %d unavailable\n", copied, removed, len(missing))
 	if len(missing) > 0 {
 		fmt.Println("missing:", strings.Join(missing, ", "))
 	}

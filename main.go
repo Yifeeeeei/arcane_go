@@ -34,6 +34,9 @@ func main() {
 	if len(args) > 1 && args[0] == "validate" {
 		paramPath = args[1]
 	}
+	if len(args) > 1 && args[0] == "metadata" {
+		paramPath = args[1]
+	}
 	m, err := NewMassProducer(paramPath)
 	if err != nil {
 		panic(err)
@@ -44,6 +47,22 @@ func main() {
 			panic(err)
 		}
 		fmt.Printf("validated %d cards\n", len(m.AllCardInfos))
+		return
+	}
+	if len(args) > 0 && args[0] == "metadata" {
+		if len(args) < 2 {
+			panic("usage: go run . metadata PARAMS_JSON")
+		}
+		if err = m.LoadCards(); err != nil {
+			panic(err)
+		}
+		if err = m.pruneStaleOutputImages(); err != nil {
+			panic(err)
+		}
+		if err = m.writeMetadata(); err != nil {
+			panic(err)
+		}
+		fmt.Printf("wrote metadata for %d cards\n", len(m.AllCardInfos))
 		return
 	}
 	if len(args) > 0 && args[0] == "render" {
