@@ -38,6 +38,10 @@ func TestParseElementsNewOrderAndAliases(t *testing.T) {
 	if _, err = parseElements("雷3"); err == nil {
 		t.Fatal("unknown element accepted")
 	}
+	legacyOrder, err := parseElements("2奥术 / 1火")
+	if err != nil || legacyOrder["奥术"] != 2 || legacyOrder["火"] != 1 {
+		t.Fatalf("number-first elements = %#v, %v", legacyOrder, err)
+	}
 }
 
 func TestLegacySchemaStillParses(t *testing.T) {
@@ -90,6 +94,22 @@ func TestNewCardIDEncodesMainCardRarity(t *testing.T) {
 	}
 }
 
+func TestNewCardIDSemanticsMatchCardFields(t *testing.T) {
+	valid := card_maker.CardInfo{Number: "BFCN001", Category: "火", Type: card_maker.TYPE_UNIT_ZH, Rarity: "普通"}
+	if err := validateNewCardIDSemantics(valid); err != nil {
+		t.Fatal(err)
+	}
+	for _, card := range []card_maker.CardInfo{
+		{Number: "BGCN001", Category: "火", Type: card_maker.TYPE_UNIT_ZH, Rarity: "普通"},
+		{Number: "BFSN001", Category: "火", Type: card_maker.TYPE_UNIT_ZH, Rarity: "普通"},
+		{Number: "BFCL001", Category: "火", Type: card_maker.TYPE_UNIT_ZH, Rarity: "普通"},
+	} {
+		if err := validateNewCardIDSemantics(card); err == nil {
+			t.Errorf("semantic mismatch accepted: %#v", card)
+		}
+	}
+}
+
 func TestRedesignedWorkbook(t *testing.T) {
 	if _, err := os.Stat("sheets/重置版/奥术纪元_基础包卡牌设计_v0.2.xlsm"); err != nil {
 		t.Skip("local redesign workbook is not present")
@@ -109,7 +129,7 @@ func TestRedesignedWorkbook(t *testing.T) {
 			quotes++
 		}
 	}
-	for _, id := range []string{"BFH001", "BGH001", "BAIL001", "BFCL001", "BWIL001"} {
+	for _, id := range []string{"BFH001", "BGH001", "BAIL001", "BACL001", "BFCL001", "BWIL001"} {
 		if _, ok := byID[id]; !ok {
 			t.Errorf("missing %s", id)
 		}
@@ -121,9 +141,9 @@ func TestRedesignedWorkbook(t *testing.T) {
 	if bh001.AttackValue == nil || *bh001.AttackValue != 0 || bh001.LifeValue == nil || *bh001.LifeValue != 15 || bh001.SkillSlots == nil || *bh001.SkillSlots != 3 || bh001.ActivationMana != nil {
 		t.Errorf("unexpected BFH001: %s", bh001.String())
 	}
-	bh002 := byID["BFH002"]
-	if bh002.ActivationMana == nil || *bh002.ActivationMana != 0 {
-		t.Errorf("BFH002 explicit zero was lost: %s", bh002.String())
+	bdh005 := byID["BDH005"]
+	if bdh005.ActivationMana == nil || *bdh005.ActivationMana != 0 {
+		t.Errorf("BDH005 explicit zero was lost: %s", bdh005.String())
 	}
 	if got := byID["BACL001"].OutputPath; got != "new_output/基础包/伙伴/无/BACL001.jpg" {
 		t.Errorf("short element output path = %q", got)

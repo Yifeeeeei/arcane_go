@@ -23,6 +23,9 @@ import (
 // character identifies legendary, normal, or derived cards.
 var newCardID = regexp.MustCompile(`^B[AFWGEDL](?:H[0-9]{3}|[CSI][LND][0-9]{3})$`)
 var legacyCardID = regexp.MustCompile(`^[0-9]{7}$`)
+var elementIDCodes = map[string]byte{"奥术": 'A', "火": 'F', "水": 'W', "气": 'G', "地": 'E', "光": 'L', "暗": 'D'}
+var typeIDCodes = map[string]byte{card_maker.TYPE_HERO_ZH: 'H', card_maker.TYPE_UNIT_ZH: 'C', card_maker.TYPE_ABILITY_ZH: 'S', card_maker.TYPE_ITEM_ZH: 'I'}
+var rarityIDCodes = map[string]byte{"传奇": 'L', "普通": 'N', "衍生": 'D'}
 
 type Row map[string]string
 type artworkCard struct {
@@ -101,7 +104,7 @@ func parseElements(raw string) (card_maker.Elements, error) {
 		return result, nil
 	}
 	normalized := strings.NewReplacer("；", " ", ";", " ", "，", " ", ",", " ", "/", " ", "\\", " ", "+", " ").Replace(raw)
-	re := regexp.MustCompile(`([\p{Han}]+)\s*([0-9]+(?:\.0+)?)`)
+	re := regexp.MustCompile(`(?:([\p{Han}]+)\s*([0-9]+(?:\.0+)?)|([0-9]+(?:\.0+)?)\s*([\p{Han}]+))`)
 	matches := re.FindAllStringSubmatch(normalized, -1)
 	if len(matches) == 0 {
 		return nil, fmt.Errorf("invalid element vector %q", raw)
@@ -111,11 +114,15 @@ func parseElements(raw string) (card_maker.Elements, error) {
 		return nil, fmt.Errorf("invalid element vector %q", raw)
 	}
 	for _, match := range matches {
-		name, ok := elementAliases[match[1]]
-		if !ok {
-			return nil, fmt.Errorf("unknown element %q", match[1])
+		elementText, valueText := match[1], match[2]
+		if elementText == "" {
+			elementText, valueText = match[4], match[3]
 		}
-		v, err := parseOptionalInt(match[2], "element value")
+		name, ok := elementAliases[elementText]
+		if !ok {
+			return nil, fmt.Errorf("unknown element %q", elementText)
+		}
+		v, err := parseOptionalInt(valueText, "element value")
 		if err != nil {
 			return nil, err
 		}
@@ -207,6 +214,9 @@ func (m *MassProducer) cardFromRow(row Row, sheet, setName string) (card_maker.C
 			return ci, fmt.Errorf("%s: invalid 类型 %q", id, ci.Type)
 		}
 	}
+	if err = validateNewCardIDSemantics(ci); err != nil {
+		return ci, err
+	}
 	if ci.ManaCost, err = parseOptionalInt(row["入场／学习／使用／盖放"], "mana cost"); err != nil {
 		return ci, fmt.Errorf("%s: %w", id, err)
 	}
@@ -261,6 +271,29 @@ func (m *MassProducer) cardFromRow(row Row, sheet, setName string) (card_maker.C
 		ci.ArtRef = *a.LegacyID
 	}
 	return ci, nil
+}
+
+func validateNewCardIDSemantics(card card_maker.CardInfo) error {
+	element := elementAliases[card.Category]
+	expectedElement, ok := elementIDCodes[element]
+	if !ok || len(card.Number) < 3 || card.Number[1] != expectedElement {
+		return fmt.Errorf("%s: ID element does not match 属性 %q", card.Number, card.Category)
+	}
+	expectedType, ok := typeIDCodes[card.Type]
+	if !ok || card.Number[2] != expectedType {
+		return fmt.Errorf("%s: ID type does not match 类型 %q", card.Number, card.Type)
+	}
+	if card.Type == card_maker.TYPE_HERO_ZH {
+		if len(card.Number) != 6 {
+			return fmt.Errorf("%s: hero ID must not contain a rarity code", card.Number)
+		}
+		return nil
+	}
+	expectedRarity, ok := rarityIDCodes[card.Rarity]
+	if !ok || len(card.Number) != 7 || card.Number[3] != expectedRarity {
+		return fmt.Errorf("%s: ID rarity does not match 稀有度 %q", card.Number, card.Rarity)
+	}
+	return nil
 }
 
 func legacyType(id string) (string, error) {
@@ -367,8 +400,9 @@ func (m *MassProducer) Validate() error {
 		counts[c.Type]++
 	}
 	threeElementBase := len(m.AllCardInfos) == 134 && counts["人物"] == 14 && counts["伙伴"] == 48 && counts["技能"] == 28 && counts["道具"] == 44
-	sevenElementBase := len(m.AllCardInfos) == 343 && counts["人物"] == 34 && counts["伙伴"] == 129 && counts["技能"] == 72 && counts["道具"] == 108
-	if !threeElementBase && !sevenElementBase {
+	sevenElementBaseV1 := len(m.AllCardInfos) == 343 && counts["人物"] == 34 && counts["伙伴"] == 129 && counts["技能"] == 72 && counts["道具"] == 108
+	sevenElementBaseLatest := len(m.AllCardInfos) == 338 && counts["人物"] == 28 && counts["伙伴"] == 130 && counts["技能"] == 72 && counts["道具"] == 108
+	if !threeElementBase && !sevenElementBaseV1 && !sevenElementBaseLatest {
 		byName := map[string][]string{}
 		for _, card := range m.AllCardInfos {
 			byName[card.Name] = append(byName[card.Name], card.Number)

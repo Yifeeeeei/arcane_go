@@ -1,18 +1,31 @@
 {
   "cards": [
     {
-      "legacy_id": "1011101",
+      "legacy_id": "1011001",
       "legacy_row": null,
-      "legacy_set": "王权纷争",
+      "legacy_set": "基础包",
       "legacy_sheet": null,
       "legacy_workbook": null,
-      "name": "收藏家·珊瑚·芬洛",
+      "name": "魔龙 奥瑞",
       "new_id": "BACL001",
       "rarity": "传奇",
-      "row": 7,
       "sheet": "奥术",
-      "status": "legacy_normalized_name_match",
-      "subtype": "人类",
+      "status": "legacy_name_match",
+      "subtype": "龙",
+      "type": "伙伴"
+    },
+    {
+      "legacy_id": "1011003",
+      "legacy_row": null,
+      "legacy_set": "基础包",
+      "legacy_sheet": null,
+      "legacy_workbook": null,
+      "name": "盟主 法罗兰克",
+      "new_id": "BACL002",
+      "rarity": "传奇",
+      "sheet": "奥术",
+      "status": "legacy_name_match",
+      "subtype": "巫师",
       "type": "伙伴"
     },
     {
@@ -21,10 +34,9 @@
       "legacy_set": null,
       "legacy_sheet": null,
       "legacy_workbook": null,
-      "name": "学院守门学徒",
+      "name": "学院侍从",
       "new_id": "BACN001",
       "rarity": "普通",
-      "row": 8,
       "sheet": "奥术",
       "status": "new_design_no_legacy_art",
       "subtype": "人类",
@@ -107,18 +119,17 @@
       "type": "伙伴"
     },
     {
-      "legacy_id": null,
+      "legacy_id": "1021003",
       "legacy_row": null,
-      "legacy_set": null,
+      "legacy_set": "基础包",
       "legacy_sheet": null,
       "legacy_workbook": null,
-      "name": "知识馆守卫",
+      "name": "誓约巫师",
       "new_id": "BACN007",
       "rarity": "普通",
-      "row": 14,
       "sheet": "奥术",
-      "status": "new_design_no_legacy_art",
-      "subtype": "造物",
+      "status": "legacy_name_match",
+      "subtype": "巫师",
       "type": "伙伴"
     },
     {
@@ -738,21 +749,6 @@
       "type": "人物"
     },
     {
-      "legacy_id": "4611002",
-      "legacy_row": null,
-      "legacy_set": "基础包",
-      "legacy_sheet": null,
-      "legacy_workbook": null,
-      "name": "芙雅夫人",
-      "new_id": "BDH002",
-      "rarity": null,
-      "row": 36,
-      "sheet": "人物",
-      "status": "legacy_name_match",
-      "subtype": "",
-      "type": "人物"
-    },
-    {
       "legacy_id": "4611003",
       "legacy_row": null,
       "legacy_set": "基础包",
@@ -1307,18 +1303,17 @@
       "type": "伙伴"
     },
     {
-      "legacy_id": null,
+      "legacy_id": "1421011",
       "legacy_row": null,
-      "legacy_set": null,
+      "legacy_set": "基础包",
       "legacy_sheet": null,
       "legacy_workbook": null,
-      "name": "苗圃守卫",
+      "name": "大长老",
       "new_id": "BECN005",
       "rarity": "普通",
-      "row": 13,
       "sheet": "地",
-      "status": "new_design_no_legacy_art",
-      "subtype": "人类",
+      "status": "legacy_name_match",
+      "subtype": "精灵",
       "type": "伙伴"
     },
     {
@@ -1412,33 +1407,31 @@
       "type": "伙伴"
     },
     {
-      "legacy_id": null,
+      "legacy_id": "1421111",
       "legacy_row": null,
-      "legacy_set": null,
+      "legacy_set": "王权纷争",
       "legacy_sheet": null,
       "legacy_workbook": null,
-      "name": "森林铁卫",
+      "name": "岩壁魔怪",
       "new_id": "BECN012",
       "rarity": "普通",
-      "row": 20,
       "sheet": "地",
-      "status": "new_design_no_legacy_art",
+      "status": "legacy_name_match",
       "subtype": "造物",
       "type": "伙伴"
     },
     {
-      "legacy_id": "1421207",
+      "legacy_id": "1421007",
       "legacy_row": null,
-      "legacy_set": "百家争鸣",
+      "legacy_set": "基础包",
       "legacy_sheet": null,
       "legacy_workbook": null,
-      "name": "地脉凝结体",
+      "name": "高地泰坦",
       "new_id": "BECN013",
       "rarity": "普通",
-      "row": 21,
       "sheet": "地",
       "status": "legacy_name_match",
-      "subtype": "造物",
+      "subtype": "精灵",
       "type": "伙伴"
     },
     {
@@ -1517,21 +1510,6 @@
       "type": "伙伴"
     },
     {
-      "legacy_id": "4411001",
-      "legacy_row": null,
-      "legacy_set": "基础包",
-      "legacy_sheet": null,
-      "legacy_workbook": null,
-      "name": "森林隐士 白须",
-      "new_id": "BEH001",
-      "rarity": null,
-      "row": 25,
-      "sheet": "人物",
-      "status": "legacy_name_match",
-      "subtype": "",
-      "type": "人物"
-    },
-    {
       "legacy_id": "4411002",
       "legacy_row": null,
       "legacy_set": "基础包",
@@ -1607,18 +1585,17 @@
       "type": "道具"
     },
     {
-      "legacy_id": null,
+      "legacy_id": "2421002",
       "legacy_row": null,
-      "legacy_set": null,
+      "legacy_set": "基础包",
       "legacy_sheet": null,
       "legacy_workbook": null,
-      "name": "地脉晶簇",
+      "name": "生长药水",
       "new_id": "BEIN001",
       "rarity": "普通",
-      "row": 41,
       "sheet": "地",
-      "status": "new_design_no_legacy_art",
-      "subtype": "装备",
+      "status": "legacy_name_match",
+      "subtype": "消耗品-药剂",
       "type": "道具"
     },
     {
@@ -1828,7 +1805,7 @@
       "row": 55,
       "sheet": "地",
       "status": "legacy_name_match",
-      "subtype": "消耗品-反制",
+      "subtype": "消耗品-咒术卷轴-幻变",
       "type": "道具"
     },
     {
@@ -1952,17 +1929,16 @@
       "type": "技能"
     },
     {
-      "legacy_id": null,
+      "legacy_id": "3421103",
       "legacy_row": null,
-      "legacy_set": null,
+      "legacy_set": "王权纷争",
       "legacy_sheet": null,
       "legacy_workbook": null,
-      "name": "巨岩投掷",
+      "name": "巨岩崩落",
       "new_id": "BESN009",
       "rarity": "普通",
-      "row": 36,
       "sheet": "地",
-      "status": "new_design_no_legacy_art",
+      "status": "legacy_name_match",
       "subtype": "法术-驱动",
       "type": "技能"
     },
@@ -2306,21 +2282,6 @@
       "new_id": "BFH001",
       "rarity": null,
       "row": 6,
-      "sheet": "人物",
-      "status": "legacy_reference_only",
-      "subtype": "",
-      "type": "人物"
-    },
-    {
-      "legacy_id": "4111002",
-      "legacy_row": 3,
-      "legacy_set": "基础包",
-      "legacy_sheet": "火",
-      "legacy_workbook": "基础包/4.0人物.xlsx",
-      "name": "女巫 维兰德",
-      "new_id": "BFH002",
-      "rarity": null,
-      "row": 7,
       "sheet": "人物",
       "status": "legacy_reference_only",
       "subtype": "",
@@ -3152,21 +3113,6 @@
       "type": "人物"
     },
     {
-      "legacy_id": "4311201",
-      "legacy_row": null,
-      "legacy_set": "百家争鸣",
-      "legacy_sheet": null,
-      "legacy_workbook": null,
-      "name": "星术士 莉莉安",
-      "new_id": "BGH004",
-      "rarity": null,
-      "row": 23,
-      "sheet": "人物",
-      "status": "legacy_name_match",
-      "subtype": "",
-      "type": "人物"
-    },
-    {
       "legacy_id": "4311202",
       "legacy_row": null,
       "legacy_set": "百家争鸣",
@@ -3212,17 +3158,16 @@
       "type": "道具"
     },
     {
-      "legacy_id": null,
+      "legacy_id": "2321006",
       "legacy_row": null,
-      "legacy_set": null,
+      "legacy_set": "基础包",
       "legacy_sheet": null,
       "legacy_workbook": null,
-      "name": "风息晶瓶",
+      "name": "瓶中闪电",
       "new_id": "BGIN002",
       "rarity": "普通",
-      "row": 42,
       "sheet": "气",
-      "status": "new_design_no_legacy_art",
+      "status": "legacy_name_match",
       "subtype": "装备",
       "type": "道具"
     },
@@ -3896,21 +3841,6 @@
       "new_id": "BLH001",
       "rarity": null,
       "row": 30,
-      "sheet": "人物",
-      "status": "legacy_name_match",
-      "subtype": "",
-      "type": "人物"
-    },
-    {
-      "legacy_id": "4511002",
-      "legacy_row": null,
-      "legacy_set": "基础包",
-      "legacy_sheet": null,
-      "legacy_workbook": null,
-      "name": "神之眷子 爱里默",
-      "new_id": "BLH002",
-      "rarity": null,
-      "row": 31,
       "sheet": "人物",
       "status": "legacy_name_match",
       "subtype": "",
@@ -4727,21 +4657,6 @@
       "type": "人物"
     },
     {
-      "legacy_id": "4211102",
-      "legacy_row": 3,
-      "legacy_set": "王权纷争",
-      "legacy_sheet": "水",
-      "legacy_workbook": "王权纷争/4.1人物.xlsx",
-      "name": "凛冰魔巫 索菲娅",
-      "new_id": "BWH005",
-      "rarity": null,
-      "row": 15,
-      "sheet": "人物",
-      "status": "legacy_reference_only",
-      "subtype": "",
-      "type": "人物"
-    },
-    {
       "legacy_id": "2211001",
       "legacy_row": 2,
       "legacy_set": "基础包",
@@ -4783,7 +4698,7 @@
       "row": 42,
       "sheet": "水",
       "status": "new_design_no_legacy_art",
-      "subtype": "装备-器物",
+      "subtype": "装备",
       "type": "道具"
     },
     {
@@ -4798,7 +4713,7 @@
       "row": 43,
       "sheet": "水",
       "status": "legacy_reference_only",
-      "subtype": "装备-器物",
+      "subtype": "装备",
       "type": "道具"
     },
     {
@@ -4817,18 +4732,17 @@
       "type": "道具"
     },
     {
-      "legacy_id": "2221012",
-      "legacy_row": 16,
+      "legacy_id": "2221014",
+      "legacy_row": null,
       "legacy_set": "基础包",
-      "legacy_sheet": "水-道具",
-      "legacy_workbook": "基础包/4.0道具.xlsx",
-      "name": "水行之靴",
+      "legacy_sheet": null,
+      "legacy_workbook": null,
+      "name": "水之咏叹",
       "new_id": "BWIN005",
       "rarity": "普通",
-      "row": 45,
       "sheet": "水",
-      "status": "legacy_reference_only",
-      "subtype": "装备-防具",
+      "status": "legacy_name_match",
+      "subtype": "装备",
       "type": "道具"
     },
     {
@@ -4922,18 +4836,17 @@
       "type": "道具"
     },
     {
-      "legacy_id": null,
+      "legacy_id": "2221005",
       "legacy_row": null,
-      "legacy_set": null,
+      "legacy_set": "基础包",
       "legacy_sheet": null,
       "legacy_workbook": null,
-      "name": "退潮卷轴",
+      "name": "精力药剂",
       "new_id": "BWIN012",
       "rarity": "普通",
-      "row": 52,
       "sheet": "水",
-      "status": "new_design_no_legacy_art",
-      "subtype": "消耗品-咒术卷轴",
+      "status": "legacy_name_match",
+      "subtype": "消耗品-药剂",
       "type": "道具"
     },
     {
@@ -5072,18 +4985,17 @@
       "type": "技能"
     },
     {
-      "legacy_id": null,
+      "legacy_id": "3221210",
       "legacy_row": null,
-      "legacy_set": null,
+      "legacy_set": "百家争鸣",
       "legacy_sheet": null,
       "legacy_workbook": null,
-      "name": "清泉术",
+      "name": "冰晶爆裂",
       "new_id": "BWSN007",
       "rarity": "普通",
-      "row": 34,
       "sheet": "水",
-      "status": "new_design_no_legacy_art",
-      "subtype": "咒术-创造",
+      "status": "legacy_name_match",
+      "subtype": "法术-创造",
       "type": "技能"
     },
     {
@@ -5158,8 +5070,8 @@
   ],
   "purpose": "供人工核对和配置旧插画复用的候选编号映射；不代表插画文件已存在或已获本次使用路径。",
   "sources": {
-    "current_workbook": "sheets/重置版/奥术纪元_基础包卡牌设计_七系补全_整理版.xlsx",
-    "current_workbook_sha256": "a1e3cb90d6ddbd2d096dd0242f326d8cc0f62a30fb3d5ab0e3148de93cbd8af9",
+    "current_workbook": "sheets/重置版/奥术纪元_基础包.xlsx",
+    "current_workbook_sha256": "a007c4e13691a0468b8128237936477b59650cf003912f982675759d307d9d7a",
     "mapping_basis": "已核验的 original_flavors.json source 与 edit_plan.json id_mapping 关联，并与最新工作簿提取记录逐条交叉核对；仅将中间编号前缀 B02 修正为 B。",
     "upstream_commit": "98b41b15d983750ef3a814cdb3b7b496b5d31805",
     "upstream_repository": "https://github.com/Yifeeeeei/arcane_go"
