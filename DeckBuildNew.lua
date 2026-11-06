@@ -165,10 +165,14 @@ function parseCardToken(token)
 end
 
 function getCardFaceUrl(cardId)
-    local relativePath = currentCardPaths[cardId]
-    return RESOURCE_URL .. relativePath:gsub("([^%w%-%._~/])", function(character)
-        return string.format("%%%02X", string.byte(character))
-    end)
+    local setDirectory = SET_DIRECTORIES[cardId:sub(1, 1)]
+    local elementDirectory = ELEMENT_DIRECTORIES[cardId:sub(2, 2)]
+    local typeDirectory = TYPE_DIRECTORIES[cardId:sub(3, 3)]
+    return NEW_OUTPUT_URL
+        .. setDirectory .. "/"
+        .. typeDirectory .. "/"
+        .. elementDirectory .. "/"
+        .. cardId .. ".jpg"
 end
 
 function getCardBackUrl(cardId)

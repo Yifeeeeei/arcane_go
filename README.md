@@ -101,4 +101,4 @@ go test ./...
 
 新版牌组为 1 张人物牌加 40 张主牌，技能混入主牌；普通牌至多 2 张，传奇牌至多 1 张。技能与其他主牌共用主牌牌背，人物牌使用独立牌背。
 
-`DeckBuild.lua` 保留为旧数字卡号的 Tabletop Simulator 场景脚本。新版请使用 `DeckBuildNew.lua`：它启动时读取 `ArcaneImages/new_output/simplified_card_infos.json`，只接受当前卡表中存在的新版自描述卡号，并直接使用元数据中的卡图路径；旧编号即使仍有残留图片也不会被导入。人物牌使用独立牌背，其余主牌共用主牌牌背。输入以空白分隔卡号，支持 `2xBFCN003` 数量写法，并可用 `//` 分成多个牌堆。
+`DeckBuild.lua` 保留为旧数字卡号的 Tabletop Simulator 场景脚本。新版请使用 `DeckBuildNew.lua`：它启动时读取 `ArcaneImages/new_output/simplified_card_infos.json`，只接受当前卡表中存在的新版自描述卡号；旧编号即使仍有残留图片也不会被导入。卡图 URL 使用预编码的中文目录映射生成，避免 Tabletop Simulator 的 Lua 环境破坏 UTF-8 路径。人物牌使用独立牌背，其余主牌共用主牌牌背。输入以空白分隔卡号，支持 `2xBFCN003` 数量写法，并可用 `//` 分成多个牌堆。
