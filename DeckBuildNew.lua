@@ -4,6 +4,7 @@
 
 local RESOURCE_URL = "https://yifeeeeei.github.io/ArcaneImages/"
 local NEW_OUTPUT_URL = RESOURCE_URL .. "new_output/"
+local CARD_TABLE_URL = NEW_OUTPUT_URL .. "simplified_card_infos.json"
 local MAIN_DECK_BACK_URL = RESOURCE_URL .. "card_back/crad_back0.png"
 local HERO_BACK_URL = RESOURCE_URL .. "card_back/crad_back4.png"
 
@@ -36,13 +37,39 @@ local TYPE_TAGS = {
 }
 
 local deckCode = ""
+local currentCardPaths = nil
+local cardTableLoadError = nil
 local builderPosition = {x = -2, y = 1, z = 3}
 local buttonPosition = {x = -2, y = 1, z = -2}
 
 function onLoad()
+    loadCurrentCardTable()
     setUpDeckBuilderInput()
     setUpDeckBuilderButton()
-    print("新版组卡器已加载。输入新版卡号后点击按钮生成牌组。")
+    print("新版组卡器已加载，正在读取当前卡表。")
+end
+
+function loadCurrentCardTable()
+    WebRequest.get(CARD_TABLE_URL, function(request)
+        if request.is_error then
+            cardTableLoadError = request.error or "未知网络错误"
+            print("当前卡表加载失败：" .. cardTableLoadError)
+            return
+        end
+        local ok, decoded = pcall(JSON.decode, request.text)
+        if not ok or type(decoded) ~= "table" then
+            cardTableLoadError = "返回内容不是有效的卡表 JSON"
+            print("当前卡表加载失败：" .. cardTableLoadError)
+            return
+        end
+        currentCardPaths = decoded
+        cardTableLoadError = nil
+        local count = 0
+        for _ in pairs(currentCardPaths) do
+            count = count + 1
+        end
+        print("当前卡表已加载，共 " .. count .. " 张卡。")
+    end)
 end
 
 function setUpDeckBuilderInput()
@@ -116,7 +143,8 @@ function isValidCardId(cardId)
     if not formatIsValid then
         return false
     end
-    return SET_DIRECTORIES[cardId:sub(1, 1)] ~= nil
+    return currentCardPaths[cardId] ~= nil
+        and SET_DIRECTORIES[cardId:sub(1, 1)] ~= nil
         and ELEMENT_DIRECTORIES[cardId:sub(2, 2)] ~= nil
         and TYPE_DIRECTORIES[cardId:sub(3, 3)] ~= nil
 end
@@ -137,14 +165,10 @@ function parseCardToken(token)
 end
 
 function getCardFaceUrl(cardId)
-    local setDirectory = SET_DIRECTORIES[cardId:sub(1, 1)]
-    local elementDirectory = ELEMENT_DIRECTORIES[cardId:sub(2, 2)]
-    local typeDirectory = TYPE_DIRECTORIES[cardId:sub(3, 3)]
-    return NEW_OUTPUT_URL
-        .. setDirectory .. "/"
-        .. typeDirectory .. "/"
-        .. elementDirectory .. "/"
-        .. cardId .. ".jpg"
+    local relativePath = currentCardPaths[cardId]
+    return RESOURCE_URL .. relativePath:gsub("([^%w%-%._~/])", function(character)
+        return string.format("%%%02X", string.byte(character))
+    end)
 end
 
 function getCardBackUrl(cardId)
@@ -203,6 +227,14 @@ function printDeckSummary(allCardIds)
 end
 
 function buildDeckByCode(value)
+    if currentCardPaths == nil then
+        if cardTableLoadError ~= nil then
+            print("无法生成牌组：当前卡表加载失败，请检查网络后重新加载脚本。")
+        else
+            print("当前卡表仍在加载，请稍后再试。")
+        end
+        return
+    end
     local piles = {{}}
     local allCardIds = {}
     local invalidTokens = {}
