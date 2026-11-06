@@ -1331,8 +1331,13 @@ func (cardMaker *CardMaker) drawNewSchemaStats(baseImage *image.RGBA, cardInfo *
 }
 
 func shouldDrawNewSchemaStat(kind string, value *int, cardInfo *CardInfo) bool {
-	if kind == "activation" && cardInfo.Type == TYPE_ABILITY_ZH {
-		return true
+	switch kind {
+	case "activation":
+		return cardInfo.Type == TYPE_ABILITY_ZH
+	case "cooldown":
+		return cardInfo.Type == TYPE_ABILITY_ZH && value != nil && *value > 0
+	case "slots":
+		return cardInfo.Type == TYPE_HERO_ZH && value != nil && *value > 0
 	}
 	return value != nil && *value > 0
 }

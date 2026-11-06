@@ -142,8 +142,8 @@ func TestRedesignedWorkbook(t *testing.T) {
 		t.Errorf("unexpected BFH001: %s", bh001.String())
 	}
 	bdh005 := byID["BDH005"]
-	if bdh005.ActivationMana == nil || *bdh005.ActivationMana != 0 {
-		t.Errorf("BDH005 explicit zero was lost: %s", bdh005.String())
+	if bdh005.ActivationMana != nil || bdh005.Cooldown != nil {
+		t.Errorf("non-skill usage cost or cooldown was retained: %s", bdh005.String())
 	}
 	if got := byID["BACL001"].OutputPath; got != "new_output/基础包/伙伴/无/BACL001.jpg" {
 		t.Errorf("short element output path = %q", got)

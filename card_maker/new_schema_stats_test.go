@@ -7,6 +7,7 @@ import (
 
 func TestSkillUsageCostBadgeAlwaysDraws(t *testing.T) {
 	zero := 0
+	one := 1
 	skill := &CardInfo{Type: TYPE_ABILITY_ZH}
 	unit := &CardInfo{Type: TYPE_UNIT_ZH}
 	if !shouldDrawNewSchemaStat("activation", nil, skill) {
@@ -17,6 +18,15 @@ func TestSkillUsageCostBadgeAlwaysDraws(t *testing.T) {
 	}
 	if shouldDrawNewSchemaStat("activation", &zero, unit) {
 		t.Fatal("non-skill zero activation value should remain hidden")
+	}
+	if shouldDrawNewSchemaStat("activation", &one, unit) {
+		t.Fatal("non-skill positive activation value should remain hidden")
+	}
+	if shouldDrawNewSchemaStat("cooldown", &one, unit) {
+		t.Fatal("non-skill cooldown should remain hidden")
+	}
+	if !shouldDrawNewSchemaStat("cooldown", &one, skill) {
+		t.Fatal("positive skill cooldown should draw a badge")
 	}
 }
 
