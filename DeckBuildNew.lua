@@ -2,7 +2,7 @@
 -- Keep DeckBuild.lua for legacy numeric card IDs. This script accepts the
 -- redesigned self-describing IDs, for example BFH001, BFCL001, BFSN002, BAIN002.
 
-local RESOURCE_URL = "https://yifeeeeei.github.io/ArcaneImages/"
+local RESOURCE_URL = "https://raw.githubusercontent.com/Yifeeeeei/ArcaneImages/main/"
 local NEW_OUTPUT_URL = RESOURCE_URL .. "new_output/"
 local CARD_TABLE_URL = NEW_OUTPUT_URL .. "simplified_card_infos.json"
 local MAIN_DECK_BACK_URL = RESOURCE_URL .. "card_back/crad_back0.png"

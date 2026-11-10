@@ -6,7 +6,7 @@ local initiated = false
 local DEBUGGING = false
 
 local card_table = {}
-local resource_url = "https://yifeeeeei.github.io/ArcaneImages/"
+local resource_url = "https://raw.githubusercontent.com/Yifeeeeei/ArcaneImages/main/"
 
 local one_deck_capacity = 1000
 
@@ -71,7 +71,7 @@ function onLoad()
     end
 
 
-    local jsonUrl = "https://yifeeeeei.github.io/ArcaneImages/output/simplified_card_infos.json" -- Replace this with your actual JSON URL
+    local jsonUrl = resource_url .. "output/simplified_card_infos.json"
     -- here, I get the all card infos and then build the scene from scrach after retreiving the data
     print("setUpDeckBuilderInput")
 
