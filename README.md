@@ -10,7 +10,7 @@
 go run .
 ```
 
-新版使用 `new_mass_producer_params.json`、`new_drawings` 和 `new_output`。首次运行先整理插画：
+新版使用 `new_mass_producer_params.json`、`new_drawings` 和 `new_output`。`sheets/` 与 `new_mass_producer_params.json` 包含本地设计资料和机器配置，故意不纳入 Git；运行新版流程前需在本地准备好这两项。首次运行先整理插画：
 
 ```bash
 go run ./cmd/prepare-new-drawings
