@@ -401,7 +401,7 @@ func (m *MassProducer) Validate() error {
 	}
 	threeElementBase := len(m.AllCardInfos) == 134 && counts["人物"] == 14 && counts["伙伴"] == 48 && counts["技能"] == 28 && counts["道具"] == 44
 	sevenElementBaseV1 := len(m.AllCardInfos) == 343 && counts["人物"] == 34 && counts["伙伴"] == 129 && counts["技能"] == 72 && counts["道具"] == 108
-	sevenElementBaseLatest := len(m.AllCardInfos) == 338 && counts["人物"] == 28 && counts["伙伴"] == 130 && counts["技能"] == 72 && counts["道具"] == 108
+	sevenElementBaseLatest := len(m.AllCardInfos) == 341 && counts["人物"] == 28 && counts["伙伴"] == 131 && counts["技能"] == 75 && counts["道具"] == 107
 	if !threeElementBase && !sevenElementBaseV1 && !sevenElementBaseLatest {
 		byName := map[string][]string{}
 		for _, card := range m.AllCardInfos {

@@ -111,7 +111,7 @@ func TestNewCardIDSemanticsMatchCardFields(t *testing.T) {
 }
 
 func TestRedesignedWorkbook(t *testing.T) {
-	if _, err := os.Stat("sheets/重置版/奥术纪元_基础包卡牌设计_v0.2.xlsm"); err != nil {
+	if _, err := os.Stat("sheets/重置版/奥术纪元_基础包_v3.xlsx"); err != nil {
 		t.Skip("local redesign workbook is not present")
 	}
 	m, err := NewMassProducer("new_mass_producer_params.json")
@@ -138,7 +138,7 @@ func TestRedesignedWorkbook(t *testing.T) {
 		t.Error("expected at least one nonempty quote")
 	}
 	bh001 := byID["BFH001"]
-	if bh001.AttackValue == nil || *bh001.AttackValue != 0 || bh001.LifeValue == nil || *bh001.LifeValue != 15 || bh001.SkillSlots == nil || *bh001.SkillSlots != 3 || bh001.ActivationMana != nil {
+	if bh001.AttackValue == nil || *bh001.AttackValue != 0 || bh001.LifeValue == nil || *bh001.LifeValue != 16 || bh001.SkillSlots == nil || *bh001.SkillSlots != 3 || bh001.ActivationMana != nil {
 		t.Errorf("unexpected BFH001: %s", bh001.String())
 	}
 	bdh005 := byID["BDH005"]
@@ -151,7 +151,7 @@ func TestRedesignedWorkbook(t *testing.T) {
 }
 
 func TestMissingArtworkCanUseBlankDrawing(t *testing.T) {
-	if _, err := os.Stat("sheets/重置版/奥术纪元_基础包卡牌设计_v0.2.xlsm"); err != nil {
+	if _, err := os.Stat("sheets/重置版/奥术纪元_基础包_v3.xlsx"); err != nil {
 		t.Skip("local redesign workbook is not present")
 	}
 	m, err := NewMassProducer("new_mass_producer_params.json")
