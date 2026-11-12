@@ -20,6 +20,8 @@ type CardInfo struct {
 	Rarity          string   `json:"rarity,omitempty"`
 	ManaCost        *int     `json:"mana_cost,omitempty"`
 	ActivationMana  *int     `json:"activation_mana,omitempty"`
+	LoadOccupancy   Elements `json:"load_occupancy,omitempty"`
+	LoadCapacity    Elements `json:"load_capacity,omitempty"`
 	TechRequirement Elements `json:"tech_requirement,omitempty"`
 	ElementsGain    Elements `json:"elements_gain,omitempty"`
 	AttackValue     *int     `json:"attack,omitempty"`

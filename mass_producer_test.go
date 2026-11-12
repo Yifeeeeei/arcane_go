@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/Yifeeeeei/arcane_go/card_maker"
@@ -41,6 +43,17 @@ func TestParseElementsNewOrderAndAliases(t *testing.T) {
 	legacyOrder, err := parseElements("2奥术 / 1火")
 	if err != nil || legacyOrder["奥术"] != 2 || legacyOrder["火"] != 1 {
 		t.Fatalf("number-first elements = %#v, %v", legacyOrder, err)
+	}
+}
+
+func TestParseLoadElementsKeepsExplicitZero(t *testing.T) {
+	zero, err := parseLoadElements("0", "无")
+	if err != nil || len(zero) != 1 || zero["奥术"] != 0 {
+		t.Fatalf("zero load = %#v, %v", zero, err)
+	}
+	blank, err := parseLoadElements("", "无")
+	if err != nil || len(blank) != 0 {
+		t.Fatalf("blank load = %#v, %v", blank, err)
 	}
 }
 
@@ -111,7 +124,7 @@ func TestNewCardIDSemanticsMatchCardFields(t *testing.T) {
 }
 
 func TestRedesignedWorkbook(t *testing.T) {
-	if _, err := os.Stat("sheets/重置版/奥术纪元_基础包_v3.xlsx"); err != nil {
+	if _, err := os.Stat("sheets/重置版/奥术纪元_基础包_v4.xlsx"); err != nil {
 		t.Skip("local redesign workbook is not present")
 	}
 	m, err := NewMassProducer("new_mass_producer_params.json")
@@ -138,8 +151,15 @@ func TestRedesignedWorkbook(t *testing.T) {
 		t.Error("expected at least one nonempty quote")
 	}
 	bh001 := byID["BFH001"]
-	if bh001.AttackValue == nil || *bh001.AttackValue != 0 || bh001.LifeValue == nil || *bh001.LifeValue != 16 || bh001.SkillSlots == nil || *bh001.SkillSlots != 3 || bh001.ActivationMana != nil {
+	if bh001.AttackValue == nil || *bh001.AttackValue != 0 || bh001.LifeValue == nil || *bh001.LifeValue != 18 || bh001.SkillSlots == nil || *bh001.SkillSlots != 3 || bh001.ActivationMana != nil {
 		t.Errorf("unexpected BFH001: %s", bh001.String())
+	}
+	if bh001.LoadCapacity["火"] != 2 || len(bh001.LoadOccupancy) != 0 {
+		t.Errorf("unexpected BFH001 load values: occupancy=%v capacity=%v", bh001.LoadOccupancy, bh001.LoadCapacity)
+	}
+	bacl001 := byID["BACL001"]
+	if bacl001.LoadOccupancy["奥术"] != 4 || len(bacl001.LoadCapacity) != 0 {
+		t.Errorf("unexpected BACL001 load values: occupancy=%v capacity=%v", bacl001.LoadOccupancy, bacl001.LoadCapacity)
 	}
 	bdh005 := byID["BDH005"]
 	if bdh005.ActivationMana != nil || bdh005.Cooldown != nil {
@@ -151,7 +171,7 @@ func TestRedesignedWorkbook(t *testing.T) {
 }
 
 func TestMissingArtworkCanUseBlankDrawing(t *testing.T) {
-	if _, err := os.Stat("sheets/重置版/奥术纪元_基础包_v3.xlsx"); err != nil {
+	if _, err := os.Stat("sheets/重置版/奥术纪元_基础包_v4.xlsx"); err != nil {
 		t.Skip("local redesign workbook is not present")
 	}
 	m, err := NewMassProducer("new_mass_producer_params.json")
@@ -176,5 +196,50 @@ func TestMissingArtworkCanUseBlankDrawing(t *testing.T) {
 	}
 	if _, err = os.Stat(outputPath); err != nil {
 		t.Fatalf("blank-artwork card was not generated at %s: %v", outputPath, err)
+	}
+}
+
+func TestNewCardsOnlySelectsChangedAndMissingCards(t *testing.T) {
+	outputDir := t.TempDir()
+	card := func(id, name string) card_maker.CardInfo {
+		return card_maker.CardInfo{
+			Number:      id,
+			SetCode:     "B",
+			SetName:     "基础包",
+			Type:        card_maker.TYPE_UNIT_ZH,
+			Name:        name,
+			Category:    "火",
+			Description: "测试",
+			OutputPath:  filepath.ToSlash(filepath.Join(outputDir, id+".jpg")),
+		}
+	}
+	unchanged := card("BFCN001", "未变化")
+	changed := card("BFCN002", "新名称")
+	missing := card("BFCN003", "缺少图片")
+	previousChanged := changed
+	previousChanged.Name = "旧名称"
+	previous := []card_maker.CardInfo{unchanged, previousChanged, missing}
+	b, err := json.Marshal(previous)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = os.WriteFile(filepath.Join(outputDir, "all_card_infos.json"), b, 0644); err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range []card_maker.CardInfo{unchanged, changed} {
+		if err = os.WriteFile(filepath.FromSlash(item.OutputPath), []byte("image"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	m := &MassProducer{
+		Params:       &MassProducerParams{OutputPath: outputDir, NewCardsOnly: true},
+		AllCardInfos: []card_maker.CardInfo{unchanged, changed, missing},
+	}
+	selected, err := m.cardsNeedingRender()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(selected) != 2 || selected[0].Number != changed.Number || selected[1].Number != missing.Number {
+		t.Fatalf("selected = %#v; want changed and missing cards", selected)
 	}
 }

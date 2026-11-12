@@ -853,7 +853,11 @@ func (cardMaker *CardMaker) drawDescriptionAndQuote(baseImage *image.RGBA, cardI
 
 func (cardMaker *CardMaker) drawGain(baseImage *image.RGBA, cardInfo *CardInfo) (*image.RGBA, error) {
 	allGains := []ElemAndVal{}
-	for ele, val := range cardInfo.ElementsGain {
+	capacity := cardInfo.ElementsGain
+	if !cardInfo.Legacy {
+		capacity = cardInfo.LoadCapacity
+	}
+	for ele, val := range capacity {
 		if val > 0 {
 			allGains = append(allGains, ElemAndVal{Elem: ele, Val: val})
 		}

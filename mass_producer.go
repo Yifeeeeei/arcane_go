@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"image"
@@ -131,6 +132,18 @@ func parseElements(raw string) (card_maker.Elements, error) {
 	return result, nil
 }
 
+func parseLoadElements(raw, category string) (card_maker.Elements, error) {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "0" || trimmed == "0.0" {
+		element := elementAliases[category]
+		if element == "" {
+			return nil, fmt.Errorf("unknown element %q", category)
+		}
+		return card_maker.Elements{element: 0}, nil
+	}
+	return parseElements(raw)
+}
+
 func parseLegacyElements(raw string) card_maker.Elements {
 	result := card_maker.Elements{}
 	re := regexp.MustCompile(`([0-9]+)\s*([\p{Han}]+)`)
@@ -247,13 +260,21 @@ func (m *MassProducer) cardFromRow(row Row, sheet, setName string) (card_maker.C
 	if ci.SkillSlots, err = parseOptionalInt(row["技能槽"], "skill slots"); err != nil {
 		return ci, fmt.Errorf("%s: %w", id, err)
 	}
-	if ci.TechRequirement, err = parseElements(row["负载条件"]); err != nil {
+	loadOccupancyRaw := row["负载占用"]
+	if _, ok := row["负载占用"]; !ok {
+		loadOccupancyRaw = row["负载条件"]
+	}
+	if ci.LoadOccupancy, err = parseLoadElements(loadOccupancyRaw, ci.Category); err != nil {
 		return ci, fmt.Errorf("%s: %w", id, err)
 	}
-	if ci.ElementsGain, err = parseElements(row["负载"]); err != nil {
+	loadCapacityRaw := row["负载容量"]
+	if _, ok := row["负载容量"]; !ok {
+		loadCapacityRaw = row["负载"]
+	}
+	if ci.LoadCapacity, err = parseLoadElements(loadCapacityRaw, ci.Category); err != nil {
 		return ci, fmt.Errorf("%s: %w", id, err)
 	}
-	ci.ElementsCost = ci.TechRequirement
+	ci.ElementsCost = ci.LoadOccupancy
 	ci.ElementsExpense = card_maker.Elements{}
 	ci.Duration = -1
 	if ci.Cooldown != nil {
@@ -401,7 +422,7 @@ func (m *MassProducer) Validate() error {
 	}
 	threeElementBase := len(m.AllCardInfos) == 134 && counts["人物"] == 14 && counts["伙伴"] == 48 && counts["技能"] == 28 && counts["道具"] == 44
 	sevenElementBaseV1 := len(m.AllCardInfos) == 343 && counts["人物"] == 34 && counts["伙伴"] == 129 && counts["技能"] == 72 && counts["道具"] == 108
-	sevenElementBaseLatest := len(m.AllCardInfos) == 341 && counts["人物"] == 28 && counts["伙伴"] == 131 && counts["技能"] == 75 && counts["道具"] == 107
+	sevenElementBaseLatest := len(m.AllCardInfos) == 345 && counts["人物"] == 28 && counts["伙伴"] == 131 && counts["技能"] == 76 && counts["道具"] == 110
 	if !threeElementBase && !sevenElementBaseV1 && !sevenElementBaseLatest {
 		byName := map[string][]string{}
 		for _, card := range m.AllCardInfos {
@@ -481,13 +502,82 @@ func (m *MassProducer) Produce() error {
 	if err := m.LoadCards(); err != nil {
 		return err
 	}
+	cardsToRender := m.AllCardInfos
+	if m.Params.NewCardsOnly {
+		var err error
+		cardsToRender, err = m.cardsNeedingRender()
+		if err != nil {
+			return err
+		}
+		fmt.Printf("new_cards_only: rendering %d changed or missing cards; skipping %d unchanged cards\n", len(cardsToRender), len(m.AllCardInfos)-len(cardsToRender))
+	}
 	if err := m.pruneStaleOutputImages(); err != nil {
 		return err
 	}
-	if err := m.renderCards(m.AllCardInfos); err != nil {
+	if err := m.renderCards(cardsToRender); err != nil {
 		return err
 	}
 	return m.writeMetadata()
+}
+
+func (m *MassProducer) cardsNeedingRender() ([]card_maker.CardInfo, error) {
+	metadataPath := filepath.Join(m.Params.OutputPath, "all_card_infos.json")
+	b, err := os.ReadFile(metadataPath)
+	if os.IsNotExist(err) {
+		return append([]card_maker.CardInfo(nil), m.AllCardInfos...), nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var previous []map[string]any
+	if err = json.Unmarshal(b, &previous); err != nil {
+		return nil, fmt.Errorf("read previous metadata %s: %w", metadataPath, err)
+	}
+	previousByID := map[string][]byte{}
+	for _, record := range previous {
+		id, _ := record["number"].(string)
+		if id == "" {
+			continue
+		}
+		canonical, err := json.Marshal(record)
+		if err != nil {
+			return nil, err
+		}
+		previousByID[id] = canonical
+	}
+	selected := make([]card_maker.CardInfo, 0)
+	for _, card := range m.AllCardInfos {
+		outputPath := renderedOutputPath(card.OutputPath, m.Params.IsPrintingVersion)
+		if _, err = os.Stat(filepath.FromSlash(outputPath)); os.IsNotExist(err) {
+			selected = append(selected, card)
+			continue
+		} else if err != nil {
+			return nil, err
+		}
+		currentJSON, err := json.Marshal(card)
+		if err != nil {
+			return nil, err
+		}
+		var currentRecord map[string]any
+		if err = json.Unmarshal(currentJSON, &currentRecord); err != nil {
+			return nil, err
+		}
+		canonical, err := json.Marshal(currentRecord)
+		if err != nil {
+			return nil, err
+		}
+		if !bytes.Equal(previousByID[card.Number], canonical) {
+			selected = append(selected, card)
+		}
+	}
+	return selected, nil
+}
+
+func renderedOutputPath(path string, printing bool) string {
+	if printing {
+		return strings.TrimSuffix(path, filepath.Ext(path)) + ".tiff"
+	}
+	return path
 }
 
 func (m *MassProducer) pruneStaleOutputImages() error {
@@ -497,7 +587,7 @@ func (m *MassProducer) pruneStaleOutputImages() error {
 	}
 	desired := map[string]bool{}
 	for _, card := range m.AllCardInfos {
-		desired[filepath.Clean(filepath.FromSlash(card.OutputPath))] = true
+		desired[filepath.Clean(filepath.FromSlash(renderedOutputPath(card.OutputPath, m.Params.IsPrintingVersion)))] = true
 	}
 	removed := 0
 	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
